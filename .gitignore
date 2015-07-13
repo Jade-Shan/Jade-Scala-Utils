@@ -1,0 +1,34 @@
+# scala specific
+*.class
+*.jar
+*.war
+*.ear
+*.log
+
+# vim specific
+*.swp
+tags
+
+# maven specific
+target/
+
+# sbt specific
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+# Scala-IDE specific
+.scala_dependencies
+
+# eclipse specific
+.metadata/
+.settings/
+.classpath
+.project
+bin/
+
+# config for this proj
+src/test/resources/local.properties
