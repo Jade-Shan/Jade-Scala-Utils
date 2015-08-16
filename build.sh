@@ -27,7 +27,7 @@ do
 			ctags -R src --exclude=target --exclude=vendor
 			# mvn compile test-compile resources:resources resources:testResources surefire:test
 			# mvn compile test-compile resources:resources resources:testResources surefire:test -Dtest=CommonTest
-			  mvn compile test-compile resources:resources resources:testResources surefire:test -Dtest=CrawlerTest 
+			  mvn compile test-compile resources:resources resources:testResources surefire:test -Dtest=UtilsTest
 			;;
 		r)
 			# mvn resources:resources scala:run -Dlauncher=foo
