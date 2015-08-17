@@ -35,7 +35,7 @@ do
 			;;
 		e)
 			# ctags -R src --exclude=target --exclude=vendor
-			# mvn compile resources:resources resources:testResources scala:console
+			mvn compile resources:resources resources:testResources scala:console
 			;;
 		b)
 			echo "b's arg:$OPTARG" #参数存在$OPTARG中
