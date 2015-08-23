@@ -7,21 +7,61 @@
 	<groupId>net.jade-dungeon</groupId>
 	<artifactId>jade-scala-utils</artifactId>
 	<packaging>jar</packaging>
-	<version>0.1.4</version>
+	<version>0.1.5</version>
 	<name>jade-scala-utils</name>
 	<url>https://github.com/Jade-Shan/Jade-scala-utils</url>
 
 	<properties>
 		<charset.encoding>UTF-8</charset.encoding>
 		<java.version>1.8</java.version>
-		<scala.version>2.10.2</scala.version>
+		<scala.version>2.10.5</scala.version>
 		<scalatest.version>1.9.1</scalatest.version>
 		<junit.version>4.10</junit.version>
 		<httpclient.version>4.3.5</httpclient.version>
 		<logback.version>1.0.13</logback.version>
+		<jsoup.version>1.8.1</jsoup.version>
+		<json.version>20140107</json.version>
+		<rhino.version>1.7R4</rhino.version>
+		<javadiffutils.version>1.2.1</javadiffutils.version>
 	</properties>
 
 	<dependencies>
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>${jsoup.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>json</artifactId>
+			<version>${json.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+				<version>${logback.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-lang</groupId>
+			<artifactId>commons-lang</artifactId>
+			<version>2.6</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
+			<version>${httpclient.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.mozilla</groupId>
+			<artifactId>rhino</artifactId>
+			<version>${rhino.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.googlecode.java-diff-utils</groupId>
+			<artifactId>diffutils</artifactId>
+			<version>${javadiffutils.version}</version>
+		</dependency>
+		<!-- -->
 		<dependency>
 			<groupId>org.scala-lang</groupId>
 			<artifactId>scala-library</artifactId>
@@ -42,16 +82,6 @@
 			<artifactId>scala-actors</artifactId>
 			<version>${scala.version}</version>
 		</dependency>
-		<dependency>
-			<groupId>ch.qos.logback</groupId>
-			<artifactId>logback-classic</artifactId>
-				<version>${logback.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>commons-lang</groupId>
-			<artifactId>commons-lang</artifactId>
-			<version>2.6</version>
-		</dependency>
 		<!-- for test scope -->
 		<dependency>
 			<groupId>org.scalatest</groupId>
@@ -64,12 +94,6 @@
 			<artifactId>junit</artifactId>
 			<version>${junit.version}</version>
 			<scope>test</scope>
-		</dependency>
-		<!-- for http -->
-		<dependency>
-			<groupId>org.apache.httpcomponents</groupId>
-			<artifactId>httpclient</artifactId>
-			<version>${httpclient.version}</version>
 		</dependency>
 	</dependencies>
 
@@ -106,7 +130,6 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-resources-plugin</artifactId>
-				<version>2.6</version>
 				<configuration>
 					<encoding>${charset.encoding}</encoding>
 				</configuration>
@@ -195,7 +218,9 @@
 				<!-- filter with: mvn resources:resources -Dparam=value -->
 				<filtering>true</filtering>
 				<includes>
+					<include>logback.xml</include>
 					<include>mail.properties</include>
+					<include>js/**/*.js</include>
 				</includes>
 			</resource>
 		</resources>
