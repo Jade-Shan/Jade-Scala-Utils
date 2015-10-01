@@ -7,6 +7,40 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
 import org.junit.runner.RunWith
 
+@RunWith(classOf[JUnitRunner])
+class ExampleTest extends FunSuite with Logging {
+
+	class Aaa(a: String, b: Double, c: Int, d: Long)
+	{
+		override def toString = ("""Aaa: {a: "%s", b: %f, c: %d, d: %d}""").format(
+			a, b, c, d)
+	}
+	val a = new Aaa("a", 1.1, 2, 333)
+	val b = new Aaa("b", 2.1, 3, 555)
+
+	test("Test-scalatest") {
+		logTrace("{}, {}, {}, {}, {}, {}", a, b, 1, "ccc", 3.33, null)
+		logTrace("{}, {}, {}, {}, {}, {}", a, b, 1, "ccc")
+		logTrace("{}, {}, {}, {}, {}, {}")
+
+		logDebug("{}, {}, {}, {}, {}, {}", a, b, 1, "ccc", 3.33, null)
+		logDebug("{}, {}, {}, {}, {}, {}", a, b, 1, "ccc")
+		logDebug("{}, {}, {}, {}, {}, {}")
+
+		logInfo("{}, {}, {}, {}, {}, {}", a, b, 1, "ccc", 3.33, null)
+		logInfo("{}, {}, {}, {}, {}, {}", a, b, 1, "ccc")
+		logInfo("{}, {}, {}, {}, {}, {}")
+
+		logWarn("{}, {}, {}, {}, {}, {}", a, b, 1, "ccc", 3.33, null)
+		logWarn("{}, {}, {}, {}, {}, {}", a, b, 1, "ccc")
+		logWarn("{}, {}, {}, {}, {}, {}")
+
+		logError("{}, {}, {}, {}, {}, {}", a, b, 1, "ccc", 3.33, null)
+		logError("{}, {}, {}, {}, {}, {}", a, b, 1, "ccc")
+		logError("{}, {}, {}, {}, {}, {}")
+	}
+
+}
 
 
 

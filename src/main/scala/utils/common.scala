@@ -156,6 +156,39 @@ trait Logging {
 
 	def getLoggerByName(name: String) = LoggerFactory.getLogger(name)
 
+	private def matchLog(logFunc: (Seq[AnyRef]) => Unit, args: AnyRef*) { 
+		args.toList match {
+			case (h: TraversableOnce[_]) :: Nil => logFunc(h.toSeq.asInstanceOf[Seq[AnyRef]])
+			case (h: Array[_]) :: Nil => logFunc(h.toSeq.asInstanceOf[Seq[AnyRef]])
+			case _ => logFunc(args)
+		}
+	}
+
+	def logTrace(msg: String, refs: Any*) {
+		if (logger.isTraceEnabled) 
+			matchLog((arrs) => { logger.trace(msg, arrs: _*) }, refs)
+	}
+
+	def logDebug(msg: String, refs: Any*) {
+		if (logger.isDebugEnabled) 
+			matchLog((arrs) => { logger.debug(msg, arrs: _*) }, refs)
+	}
+
+	def logInfo(msg: String, refs: Any*) {
+		if (logger.isInfoEnabled) 
+			matchLog((arrs) => { logger.info(msg, arrs: _*) }, refs)
+	}
+
+	def logWarn(msg: String, refs: Any*) {
+		if (logger.isWarnEnabled) 
+			matchLog((arrs) => { logger.warn(msg, arrs: _*) }, refs)
+	}
+
+	def logError(msg: String, refs: Any*) {
+		if (logger.isErrorEnabled) 
+			matchLog((arrs) => { logger.error(msg, arrs: _*) }, refs)
+	}
+
 }
 
 
