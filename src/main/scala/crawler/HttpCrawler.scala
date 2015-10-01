@@ -59,7 +59,7 @@ abstract class DefaultHttpCrawler extends Actor with HttpCrawler
 		while (true) {
 			receive {
 				case httpTask: HttpCrawlerTask => processTask(httpTask)
-				case _ => logger.error("Error Msg Type")
+				case _ => logError("Error Msg Type")
 			}
 		}
 	}
