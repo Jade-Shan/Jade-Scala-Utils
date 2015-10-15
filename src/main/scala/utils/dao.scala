@@ -53,7 +53,7 @@ trait DaoSessionFactoryHelper {
 
 }
 
-abstract class BaseTransactionService {
+abstract class BaseTransactionService extends jadeutils.common.Logging {
 
 	val sfHelper: DaoSessionFactoryHelper
 
@@ -64,14 +64,15 @@ abstract class BaseTransactionService {
 	private def warpSession[T](f: => T): T = {
 		if(getSession.getTransaction().wasCommitted)
 			getSession.getTransaction().begin()
-		println("Transaction begin")
+		logDebug("Transaction begin")
 
 		val t = f
 		if(getSession.getTransaction().isActive)
 			getSession.getTransaction().commit()
+		logDebug("Transaction commit")
+
 		getSession.close()
 
-		println("Transaction commit")
 		t
 	}
 
