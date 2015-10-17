@@ -12,9 +12,20 @@ class SessionTest extends FunSuite with Logging {
 	class TestTransaction(id: String) extends Transaction with Logging {
 		private[this] var status = "ready"
 
-		def begin() { status = "active"; logInfo("transaction {} begin", id) }
-		def commit() { status = "commited"; logInfo("transaction {} commit", id) }
-		def rollback() { status = "rollbacked"; logInfo("transaction {} rollback", id) }
+		def begin() {
+			status = "active"
+			logInfo("transaction {} begin status is {}", id, status)
+		}
+
+		def commit() {
+			status = "commited"
+			logInfo("transaction {} commit status is {}", id, status)
+		}
+
+		def rollback() {
+			status = "rollbacked"
+			logInfo("transaction {} rollback status is {}", id, status)
+		}
 
 		def isActive() = { logInfo("transaction {} status is {}", id, status); "active" == status }
 	}
@@ -38,7 +49,7 @@ class SessionTest extends FunSuite with Logging {
 	class TestSessionFactory extends DaoSessionFactory with Logging {
 		var sessCount = 0
 
-		def createSession = {
+		def createSession = if (null != session) session else {
 			session = new TestSession("" + sessCount)
 			sessCount = sessCount + 1
 			session
