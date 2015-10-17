@@ -61,7 +61,9 @@ abstract class BaseTransactionService extends jadeutils.common.Logging {
 
 	def getSession = sfHelper.getSession
 
-	def withTransaction[T](callFunc: => T)(implicit m: Manifest[T]): T = warpSession(callFunc)
+	def withTransaction[T](callFunc: => T)(implicit m: Manifest[T]): T = {
+		warpSession(callFunc)
+	}
 
 	private def warpSession[T](callFunc: => T)(implicit m: Manifest[T]): T = {
 		if (!getSession.getTransaction().isActive) {
@@ -75,20 +77,26 @@ abstract class BaseTransactionService extends jadeutils.common.Logging {
 				getSession.getTransaction().commit()
 				logDebug("Transaction commit")
 			}
-			funcResult
+			(funcResult, null)
 		} catch {
 			case e: RuntimeException => {
 				if (getSession.getTransaction().isActive) {
 					getSession.getTransaction().rollback()
 					logDebug("Transaction rollback")
 				}
-				throw e
+				(generateDefaultResult(m), e)
 			}
 		} finally { getSession.close() }
 
+		if (null != result._2) throw result._2
 
+		result._1.asInstanceOf[T]
+	}
 
-		result.asInstanceOf[T]
+	private def generateDefaultResult[T](m: Manifest[T]): Any = {
+		if (m <:< manifest[Int]) 0
+		else if (m <:< manifest[Unit]) ()
+		else null
 	}
 
 }

@@ -73,6 +73,8 @@ class SessionTest extends FunSuite with Logging {
 
 		def insert(model: User)  {
 			logDebug("before insert")
+			if (null == model) 
+				throw new java.lang.RuntimeException("Exception for Text")
 			logDebug("after insert")
 		}
 
@@ -87,15 +89,29 @@ class SessionTest extends FunSuite with Logging {
 	}
 
 
-	test("Test-Trans-commit") {
+	test("Test-Trans-get-commit") {
+		logInfo("\n\n======== test get commit =============")
 		val u = UserService.getUser(33)
-		UserService.insertUser(u)
-		logDebug("{}, {}, {}, {}, {}, {}", u)
-		assert(33 == u.id)
+		logDebug("{}", u)
+	}
+	test("Test-Trans-insert-commit") {
+		logInfo("\n\n======== test insert commit =============")
+		UserService.insertUser(new User(33, "Testuser33"))
 	}
 
-	test("Test-Trans-rollback") {
-	//	val u = UserService.getUser(-33)
+	test("Test-Trans-get-rollback") {
+		logInfo("\n\n======== test get rollback =============")
+		intercept[java.lang.Exception] {
+			val u = UserService.getUser(-33)
+			logDebug("{}", u)
+		}
+	}
+
+	test("Test-Trans-insert-rollback") {
+		logInfo("\n\n======== test insert rollback =============")
+		intercept[java.lang.Exception] {
+			UserService.insertUser(null)
+		}
 	}
 
 }
