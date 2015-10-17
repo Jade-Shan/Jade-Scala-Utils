@@ -1,6 +1,6 @@
-package jadeutils.common
+package jadeutils.comm.dao
 
-import jadeutils.comm.dao._
+import jadeutils.common._
 
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
@@ -10,23 +10,21 @@ import org.junit.runner.RunWith
 class SessionTest extends FunSuite with Logging {
 
 	class TestTransaction(id: String) extends Transaction with Logging {
+		def isActive() = { "active" == status }
 
-		def begin() { status = "begining"; logInfo("transaction {} begin", id) }
-		def commit() { status = "commited"; logInfo("transaction {} commit", id) }
-		def rollback() { status = "rollbacked"; logInfo("transaction {} rollback", id) }
-
-		def wasCommitted = {"commited" == status}
-		def isActive = {"begining" == status}
+		def begin() { status = "active" }
+		def commit() { status = "commited" }
+		def rollback() { status = "rollbacked" }
 	}
 
 	class TestSession(id: String) extends DaoSession with Logging {
-		var transCount = 0
+		private[this] var transCount = 0
 
 		def isOpen() = "open" == status
 
-		def open() { status = "open"; logInfo("Session {} open", id) }
+		def open() { status = "open"; logTrace("Session {} open", id) }
 
-		def close() { status = "closed"; logInfo("Session {} close", id) }
+		def close() { status = "closed"; logTrace("Session {} close", id) }
 
 		def getTransaction() = if (null != trans) trans else {
 			trans = new TestTransaction("" + transCount)
@@ -36,9 +34,9 @@ class SessionTest extends FunSuite with Logging {
 	}
 
 	class TestSessionFactory extends DaoSessionFactory with Logging {
-		var sessCount = 0
+		private[this] var sessCount = 0
 
-		def createSession = {
+		def createSession = if (null != session) session else {
 			session = new TestSession("" + sessCount)
 			sessCount = sessCount + 1
 			session
@@ -55,13 +53,30 @@ class SessionTest extends FunSuite with Logging {
 		val sfHelper = TestSessionFactoryHelper
 	}
 
-	class User(id: Int, name: String) {
+	class User(val id: Int, val name: String) {
 		override def toString: String = "{%d, %s}".format(id, name)
 	}
 
-	class UserDao(session: DaoSession) extends BasicDao[User, Int](session) {
+	class UserDao(session: DaoSession) extends BasicDao[User, Int](session) 
+		with Logging
+	{
 
-		def getById(id: Int): User = new User(id, "TestUser" + id)
+		def getById(id: Int): User = {
+			logDebug("before query")
+
+			val u = if (id > 0) new User(id, "TestUser" + id)
+			else throw new java.lang.RuntimeException("Exception for Text")
+
+			logDebug("after query")
+			u
+		}
+
+		def insert(model: User)  {
+			logDebug("before insert")
+			if (null == model) 
+				throw new java.lang.RuntimeException("Exception for Text")
+			logDebug("after insert")
+		}
 
 	}
 
@@ -69,12 +84,34 @@ class SessionTest extends FunSuite with Logging {
 		private val dao = new UserDao(getSession)
 
 		def getUser(id: Int): User = withTransaction { dao.getById(id) }
+
+		def insertUser(user: User) { withTransaction { dao.insert(user) } }
 	}
 
 
-	test("Test-Basic-Dao") {
+	test("Test-Trans-get-commit") {
+		logInfo("\n\n======== test get commit =============")
 		val u = UserService.getUser(33)
-		logError("{}, {}, {}, {}, {}, {}", u)
+		logDebug("{}", u)
+	}
+	test("Test-Trans-insert-commit") {
+		logInfo("\n\n======== test insert commit =============")
+		UserService.insertUser(new User(33, "Testuser33"))
+	}
+
+	test("Test-Trans-get-rollback") {
+		logInfo("\n\n======== test get rollback =============")
+		intercept[java.lang.Exception] {
+			val u = UserService.getUser(-33)
+			logDebug("{}", u)
+		}
+	}
+
+	test("Test-Trans-insert-rollback") {
+		logInfo("\n\n======== test insert rollback =============")
+		intercept[java.lang.Exception] {
+			UserService.insertUser(null)
+		}
 	}
 
 }

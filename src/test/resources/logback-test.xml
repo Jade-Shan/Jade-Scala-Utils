@@ -84,7 +84,8 @@
 	<!-- ==================================================================== -->
 	<!--
 	-->
-	<logger level="DEBUG" name="jadeutils.xmpp" />  
+	<logger level="DEBUG" name="jadeutils" />  
+	<logger level="TRACE" name="jadeutils.comm.dao" />  
 	<logger level="TRACE" name="xmlProcessTracer">  
 		<appender-ref ref="xmlParseTracer" />
 	</logger>
