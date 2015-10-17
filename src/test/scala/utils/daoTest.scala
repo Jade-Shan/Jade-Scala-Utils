@@ -1,6 +1,6 @@
-package jadeutils.common
+package jadeutils.comm.dao
 
-import jadeutils.comm.dao._
+import jadeutils.common._
 
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
@@ -10,34 +10,21 @@ import org.junit.runner.RunWith
 class SessionTest extends FunSuite with Logging {
 
 	class TestTransaction(id: String) extends Transaction with Logging {
-		private[this] var status = "ready"
+		def isActive() = { "active" == status }
 
-		def begin() {
-			status = "active"
-			logInfo("transaction {} begin status is {}", id, status)
-		}
-
-		def commit() {
-			status = "commited"
-			logInfo("transaction {} commit status is {}", id, status)
-		}
-
-		def rollback() {
-			status = "rollbacked"
-			logInfo("transaction {} rollback status is {}", id, status)
-		}
-
-		def isActive() = { logInfo("transaction {} status is {}", id, status); "active" == status }
+		def begin() { status = "active" }
+		def commit() { status = "commited" }
+		def rollback() { status = "rollbacked" }
 	}
 
 	class TestSession(id: String) extends DaoSession with Logging {
-		var transCount = 0
+		private[this] var transCount = 0
 
 		def isOpen() = "open" == status
 
-		def open() { status = "open"; logInfo("Session {} open", id) }
+		def open() { status = "open"; logTrace("Session {} open", id) }
 
-		def close() { status = "closed"; logInfo("Session {} close", id) }
+		def close() { status = "closed"; logTrace("Session {} close", id) }
 
 		def getTransaction() = if (null != trans) trans else {
 			trans = new TestTransaction("" + transCount)
@@ -47,7 +34,7 @@ class SessionTest extends FunSuite with Logging {
 	}
 
 	class TestSessionFactory extends DaoSessionFactory with Logging {
-		var sessCount = 0
+		private[this] var sessCount = 0
 
 		def createSession = if (null != session) session else {
 			session = new TestSession("" + sessCount)
@@ -102,9 +89,9 @@ class SessionTest extends FunSuite with Logging {
 
 	test("Test-Trans-commit") {
 		val u = UserService.getUser(33)
-//		UserService.insertUser(u)
-//		logDebug("{}, {}, {}, {}, {}, {}", u)
-//		assert(33 == u.id)
+		UserService.insertUser(u)
+		logDebug("{}, {}, {}, {}, {}, {}", u)
+		assert(33 == u.id)
 	}
 
 	test("Test-Trans-rollback") {

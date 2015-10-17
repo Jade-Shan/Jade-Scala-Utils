@@ -3,6 +3,7 @@ package jadeutils.comm.dao
 import java.lang.RuntimeException;
 
 trait Transaction {
+	protected var status = "ready"
 
 	def begin(): Unit
 	def commit(): Unit
@@ -12,9 +13,8 @@ trait Transaction {
 }
 
 trait DaoSession {
-	var trans: Transaction = _
-
-	var status = "open"
+	protected var trans: Transaction = _
+	protected var status = "open"
 
 	def isOpen(): Boolean
 
@@ -51,7 +51,7 @@ trait DaoSessionFactoryHelper {
 	lazy val sessionFactory = initSessionFactory()
 
 	def getSession = if (_session != null && _session.isOpen())
-		_session else sessionFactory.createSession()
+	_session else sessionFactory.createSession()
 
 }
 
@@ -86,8 +86,8 @@ abstract class BaseTransactionService extends jadeutils.common.Logging {
 			}
 		} finally { getSession.close() }
 
-		
-		
+
+
 		result.asInstanceOf[T]
 	}
 
