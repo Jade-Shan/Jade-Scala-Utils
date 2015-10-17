@@ -94,7 +94,14 @@ abstract class BaseTransactionService extends jadeutils.common.Logging {
 	}
 
 	private def generateDefaultResult[T](m: Manifest[T]): Any = {
-		if (m <:< manifest[Int]) 0
+		if (m <:< manifest[Byte]) 0
+		else if (m <:< manifest[Short]) 0
+		else if (m <:< manifest[Int]) 0
+		else if (m <:< manifest[Long]) 0L
+		else if (m <:< manifest[Float]) 0F
+		else if (m <:< manifest[Double]) 0
+		else if (m <:< manifest[Char]) '0'
+		else if (m <:< manifest[Boolean]) false
 		else if (m <:< manifest[Unit]) ()
 		else null
 	}
