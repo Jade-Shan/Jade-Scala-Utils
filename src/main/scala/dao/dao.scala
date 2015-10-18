@@ -19,10 +19,12 @@ trait DaoSession {
 
 	def getId(): String
 	def isOpen(): Boolean
+	def isAutoCommit(): Boolean
+	def getTransaction(): Transaction
 
 	def close(): Unit
 	def open(): Unit
-	def getTransaction(): Transaction
+	def setAutoCommit(isAuto: Boolean): Unit
 }
 
 trait DaoSessionFactory {
@@ -66,7 +68,9 @@ abstract class BaseTransactionService extends jadeutils.common.Logging {
 	}
 
 	private def warpSession[T](callFunc: => T)(implicit m: Manifest[T]): T = {
+		val autoCommitBackup = getSession.isAutoCommit
 		val trans = getSession.getTransaction
+
 		if (!trans.isActive) {
 			trans.begin()
 			logTrace("Trans begin: S: {} T: {}", getSession.getId, trans.getId)
@@ -87,7 +91,10 @@ abstract class BaseTransactionService extends jadeutils.common.Logging {
 				}
 				(generateDefaultResult(m), e)
 			}
-		} finally { getSession.close() }
+		} finally {
+			getSession.setAutoCommit(autoCommitBackup)
+			getSession.close()
+		}
 
 		if (null != result._2) throw result._2
 
@@ -104,7 +111,7 @@ abstract class BaseTransactionService extends jadeutils.common.Logging {
 		else if (m <:< manifest[Char]) '0'
 		else if (m <:< manifest[Boolean]) false
 		else if (m <:< manifest[Unit]) ()
-		else null
+			else null
 	}
 
 }
