@@ -9,9 +9,13 @@
 	<property name="LOG_HOME" value="/tmp" />
 	<property name="LOGFILE" value="jade-scala-utils.%d{yyyy-MM-dd}.log" />
 
-	<property name="LOG_PTN_INFO" 
-		value="test-%d{HH:mm:ss.SSS} %-5level - %msg%n" />
-	<property name="LOG_PTN_TRACE" value="test-%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36}.%method:%line - %msg%n" />
+	<property name="LOGENV" value="fat" />
+
+	<!-- 日志最大的历史 30天 --> 
+  <property name="MAX_HISTORY" value="30"/>  
+  <property name="MAX_SIZE" value="5MB"/>  
+	<property name="LOG_PTN_INFO"  value="%d{HH:mm:ss.SSS} %-5level - %msg%n" />
+	<property name="LOG_PTN_TRACE" value="%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36}.%method:%line - %msg%n" />
 
 	<!-- ==================================================================== -->
 	<!-- 日志输出                                                             -->
@@ -23,7 +27,7 @@
 			<level>TRACE</level><onMatch>DENY</onMatch>
 		</filter>
 		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>${LOG_PTN_INFO}</pattern>
+			<pattern>${LOGENV}-${LOG_PTN_INFO}</pattern>
 		</encoder>
 	</appender>
 
@@ -37,7 +41,7 @@
 			<level>INFO</level><onMatch>DENY</onMatch>
 		</filter>
 		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>${LOG_PTN_TRACE}</pattern>
+			<pattern>${LOGENV}-${LOG_PTN_TRACE}</pattern>
 		</encoder>
 	</appender>
 
@@ -45,27 +49,27 @@
 		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
 			<!--日志文件输出的文件名-->
 			<FileNamePattern>${LOG_HOME}/${LOGFILE}</FileNamePattern> 
-			<MaxHistory>30</MaxHistory> <!--日志文件保留天数-->
+			<MaxHistory>${MAX_HISTORY}</MaxHistory> <!--日志文件保留天数-->
 		</rollingPolicy> 
 		<triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-			<MaxFileSize>10MB</MaxFileSize> <!-- 文件大小 -->
+			<MaxFileSize>${MAX_SIZE}</MaxFileSize> <!-- 文件大小 -->
 		</triggeringPolicy>
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
 			<level>TRACE</level><onMatch>DENY</onMatch>
 			<level>DEBUG</level><onMatch>DENY</onMatch>
 		</filter>
 		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder"> 
-			<pattern>${LOG_PTN_INFO}</pattern>
+			<pattern>${LOGENV}-${LOG_PTN_INFO}</pattern>
 		</encoder> 
 	</appender> 
 
 	<appender name="APD-TRACE-FILE" class="ch.qos.logback.core.rolling.RollingFileAppender"> 
 		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
 			<FileNamePattern>${LOG_HOME}/${LOGFILE}</FileNamePattern> 
-			<MaxHistory>30</MaxHistory>
+			<MaxHistory>${MAX_HISTORY}</MaxHistory>
 		</rollingPolicy> 
 		<triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-			<MaxFileSize>10MB</MaxFileSize>
+			<MaxFileSize>${MAX_SIZE}</MaxFileSize>
 		</triggeringPolicy>
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
 			<level>ERROR</level><onMatch>DENY</onMatch>
@@ -73,7 +77,7 @@
 			<level>INFO</level><onMatch>DENY</onMatch>
 		</filter>
 		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder"> 
-			<pattern>${LOG_PTN_TRACE}</pattern>
+			<pattern>${LOGENV}-${LOG_PTN_TRACE}</pattern>
 		</encoder> 
 	</appender> 
 
@@ -95,10 +99,16 @@
 	<!-- ==================================================================== -->
 
 	<!-- 默认的全局日志级别 -->
-	<root level="DEBUG">
+	<root level="INFO">
 		<appender-ref ref="APD-INFO-CSL" />
 		<appender-ref ref="APD-INFO-FILE" />
 	</root>
+
+	<!-- jadeutils.comm.dao 包的日志级别 -->
+	<logger level="DEBUG" name="jadeutils.comm.dao" > 
+		<appender-ref ref="APD-TRACE-CSL" />
+		<appender-ref ref="APD-TRACE-FILE" />
+	</logger>
 
 	<!-- jadeutils.comm.dao 包的日志级别 -->
 	<logger level="TRACE" name="jadeutils.comm.dao" > 
