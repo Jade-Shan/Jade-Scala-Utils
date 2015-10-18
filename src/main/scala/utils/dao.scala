@@ -5,23 +5,23 @@ import java.lang.RuntimeException;
 trait Transaction {
 	protected var status = "ready"
 
+	def getId(): String
+	def isActive(): Boolean
+
 	def begin(): Unit
 	def commit(): Unit
 	def rollback(): Unit
-
-	def isActive: Boolean
 }
 
 trait DaoSession {
 	protected var trans: Transaction = _
 	protected var status = "open"
 
+	def getId(): String
 	def isOpen(): Boolean
 
-	def open(): Unit
-
 	def close(): Unit
-
+	def open(): Unit
 	def getTransaction(): Transaction
 }
 
@@ -59,30 +59,31 @@ abstract class BaseTransactionService extends jadeutils.common.Logging {
 
 	val sfHelper: DaoSessionFactoryHelper
 
-	def getSession = sfHelper.getSession
+	protected def getSession() = sfHelper.getSession
 
 	def withTransaction[T](callFunc: => T)(implicit m: Manifest[T]): T = {
 		warpSession(callFunc)
 	}
 
 	private def warpSession[T](callFunc: => T)(implicit m: Manifest[T]): T = {
-		if (!getSession.getTransaction().isActive) {
-			getSession.getTransaction().begin()
-			logDebug("Transaction begin")
+		val trans = getSession.getTransaction
+		if (!trans.isActive) {
+			trans.begin()
+			logTrace("Trans begin: S: {} T: {}", getSession.getId, trans.getId)
 		}
 
 		var result = try {
 			var funcResult = callFunc
-			if (getSession.getTransaction().isActive) {
-				getSession.getTransaction().commit()
-				logDebug("Transaction commit")
+			if (trans.isActive) {
+				trans.commit()
+				logTrace("Trans commit: S: {} T: {}", getSession.getId, trans.getId)
 			}
 			(funcResult, null)
 		} catch {
 			case e: RuntimeException => {
-				if (getSession.getTransaction().isActive) {
-					getSession.getTransaction().rollback()
-					logDebug("Transaction rollback")
+				if (trans.isActive) {
+					trans.rollback()
+					logTrace("Trans rollback: S: {} T: {}", getSession.getId, trans.getId)
 				}
 				(generateDefaultResult(m), e)
 			}

@@ -9,7 +9,8 @@ import org.junit.runner.RunWith
 @RunWith(classOf[JUnitRunner])
 class SessionTest extends FunSuite with Logging {
 
-	class TestTransaction(id: String) extends Transaction with Logging {
+	class TestTransaction(val id: String) extends Transaction with Logging {
+		def getId = id
 		def isActive() = { "active" == status }
 
 		def begin() { status = "active" }
@@ -20,10 +21,10 @@ class SessionTest extends FunSuite with Logging {
 	class TestSession(id: String) extends DaoSession with Logging {
 		private[this] var transCount = 0
 
+		def getId = id
 		def isOpen() = "open" == status
 
-		def open() { status = "open"; logTrace("Session {} open", id) }
-
+		def open()  { status = "open";   logTrace("Session {} open", id) }
 		def close() { status = "closed"; logTrace("Session {} close", id) }
 
 		def getTransaction() = if (null != trans) trans else {
@@ -62,20 +63,20 @@ class SessionTest extends FunSuite with Logging {
 	{
 
 		def getById(id: Int): User = {
-			logDebug("before query")
+			logTrace("before query")
 
 			val u = if (id > 0) new User(id, "TestUser" + id)
 			else throw new java.lang.RuntimeException("Exception for Text")
 
-			logDebug("after query")
+			logTrace("after query")
 			u
 		}
 
 		def insert(model: User)  {
-			logDebug("before insert")
+			logTrace("before insert")
 			if (null == model) 
 				throw new java.lang.RuntimeException("Exception for Text")
-			logDebug("after insert")
+			logTrace("after insert")
 		}
 
 	}
@@ -84,31 +85,31 @@ class SessionTest extends FunSuite with Logging {
 		private val dao = new UserDao(getSession)
 
 		def getUser(id: Int): User = withTransaction { dao.getById(id) }
-
 		def insertUser(user: User) { withTransaction { dao.insert(user) } }
 	}
 
 
 	test("Test-Trans-get-commit") {
-		logInfo("\n\n======== test get commit =============")
+		logInfo("======== test get commit =============")
 		val u = UserService.getUser(33)
-		logDebug("{}", u)
+		logInfo("{}", u)
 	}
+
 	test("Test-Trans-insert-commit") {
-		logInfo("\n\n======== test insert commit =============")
+		logInfo("======== test insert commit =============")
 		UserService.insertUser(new User(33, "Testuser33"))
 	}
 
 	test("Test-Trans-get-rollback") {
-		logInfo("\n\n======== test get rollback =============")
+		logInfo("======== test get rollback =============")
 		intercept[java.lang.Exception] {
 			val u = UserService.getUser(-33)
-			logDebug("{}", u)
+			logInfo("{}", u)
 		}
 	}
 
 	test("Test-Trans-insert-rollback") {
-		logInfo("\n\n======== test insert rollback =============")
+		logInfo("======== test insert rollback =============")
 		intercept[java.lang.Exception] {
 			UserService.insertUser(null)
 		}
