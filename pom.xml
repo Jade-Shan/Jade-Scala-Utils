@@ -14,7 +14,7 @@
 	<properties>
 		<charset.encoding>UTF-8</charset.encoding>
 		<java.version>1.8</java.version>
-		<scala.version>[2.11.0, 2.11.7]</scala.version>
+		<scala.version>[2.11.0,2.11.7]</scala.version>
 		<scalatest.version>[2.2.0,2.2.5]</scalatest.version>
 		<junit.version>4.10</junit.version>
 		<httpclient.version>4.3.5</httpclient.version>
@@ -23,7 +23,7 @@
 		<json.version>20140107</json.version>
 		<rhino.version>1.7R4</rhino.version>
 		<javadiffutils.version>1.2.1</javadiffutils.version>
-		<sqlitejdbc.version>[3.8.6,)</sqlitejdbc.version>
+		<sqlitejdbc.version>3.8.11.2</sqlitejdbc.version>
 	</properties>
 
 	<dependencies>
