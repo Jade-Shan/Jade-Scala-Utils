@@ -83,8 +83,7 @@ class CommonTest extends FunSuite {
 	test("Test-Logging") {
 		object LoggerTester extends Logging {
 			def logDebugHello() {
-				logger.debug("hello {}, {}, {}, {}", 1.asInstanceOf[AnyRef], 
-					2.asInstanceOf[AnyRef], 3.asInstanceOf[AnyRef], 4.asInstanceOf[AnyRef])
+				logDebug("hello {}, {}, {}, {}", 1, 2, 3, 4)
 			}
 		}
 		LoggerTester.logDebugHello()
@@ -100,8 +99,7 @@ class CommonTest extends FunSuite {
 				val port: String
 
 				def sendMail() {
-					logger.debug("Sending mail: {}:{}", host.asInstanceOf[AnyRef], 
-						port.asInstanceOf[AnyRef])	
+					logDebug("Sending mail: {}:{}", host, port)	
 				}
 			}
 		}
