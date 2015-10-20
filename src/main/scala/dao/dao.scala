@@ -34,11 +34,6 @@ trait DaoSessionFactory {
 	def createSession(): DaoSession
 }
 
-abstract class BasicDao[T, K](session: DaoSession) {
-	def getById(id: K): T
-	def insert(model: T): Unit
-}
-
 trait DaoSessionFactoryHelper {
 	var session: DaoSession = _
 	lazy val sessionFactory = initSessionFactory()
@@ -108,4 +103,9 @@ abstract class BaseTransactionService extends jadeutils.common.Logging {
 			else null
 	}
 
+}
+
+traic Dao[T, K] {
+	def getById(id: K): T
+	def insert(model: T): Unit
 }

@@ -60,9 +60,7 @@ class SessionTest extends FunSuite with Logging {
 		override def toString: String = "{%d, %s}".format(id, name)
 	}
 
-	class UserDao(session: DaoSession) extends BasicDao[User, Int](session) 
-		with Logging
-	{
+	class UserDao(session: DaoSession) extends Dao[User, Int] with Logging {
 
 		def getById(id: Int): User = {
 			logTrace("before query")
