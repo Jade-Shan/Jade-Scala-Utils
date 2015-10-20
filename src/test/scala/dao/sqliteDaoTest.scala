@@ -12,11 +12,12 @@ class SqliteDaoTest extends FunSuite with Logging {
 
 	class TestTransaction(val id: String) extends Transaction with Logging {
 		def getId = id
-		def isActive = "active" == status
+		private[this] var transStatus = "ready"
 
-		def begin() { status = "active" }
-		def commit() { status = "commited" }
-		def rollback() { status = "rollbacked" }
+		def isActive = "active" == transStatus
+		def begin() { transStatus = "active" }
+		def commit() { transStatus = "commited" }
+		def rollback() { transStatus = "rollbacked" }
 	}
 
 	class BaseSession(id: String, factory: BaseDaoSessionFactory) 
@@ -26,27 +27,27 @@ class SqliteDaoTest extends FunSuite with Logging {
 		private[this] var transCount = 0
 		private[this] var autoCommit = true
 		private[this] var sessId = "BasicDaoSession: " + id
+		private[this] var sessionStatus = "open"
 
 		logTrace("DaoSession create: {}", sessId)
 
 		def getId = sessId
-		def isOpen = "open" == status
+		def isOpen = "open" == sessionStatus
 		def isAutoCommit = autoCommit
-		def getTransaction() = {
-			if (null != trans) trans else {
-				trans = new TestTransaction("" + transCount)
-				transCount = transCount + 1
-				trans
-			}
+		def getTransaction() = if (null != trans) trans else {
+			trans = new TestTransaction("" + transCount)
+			transCount = transCount + 1
+			trans
 		}
+		
 
 		def open()  {
-			status = "open"
+			sessionStatus= "open"
 			logTrace("Session {} open", id)
 		}
 
 		def close() {
-			status = "closed"
+			sessionStatus = "closed"
 			factory.close(this)
 			logTrace("DaoSession close: {}", sessId)
 		}

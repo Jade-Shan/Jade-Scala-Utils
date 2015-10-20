@@ -11,19 +11,21 @@ class SessionTest extends FunSuite with Logging {
 
 	class TestTransaction(val id: String) extends Transaction with Logging {
 		def getId = id
-		def isActive = "active" == status
+		private[this] var transStatus = "ready"
 
-		def begin() { status = "active" }
-		def commit() { status = "commited" }
-		def rollback() { status = "rollbacked" }
+		def isActive = "active" == transStatus
+		def begin() { transStatus = "active" }
+		def commit() { transStatus = "commited" }
+		def rollback() { transStatus = "rollbacked" }
 	}
 
 	class TestSession(id: String) extends DaoSession with Logging {
 		private[this] var transCount = 0
 		private[this] var autoCommit = true
+		private[this] var sessionStatus = "open"
 
 		def getId = id
-		def isOpen = "open" == status
+		def isOpen = "open" == sessionStatus
 		def isAutoCommit = autoCommit
 		def getTransaction() = if (null != trans) trans else {
 			trans = new TestTransaction("" + transCount)
@@ -31,8 +33,8 @@ class SessionTest extends FunSuite with Logging {
 			trans
 		}
 
-		def open()  { status = "open";   logTrace("Session {} open", id) }
-		def close() { status = "closed"; logTrace("Session {} close", id) }
+		def open()  { sessionStatus = "open";   logTrace("Session {} open", id) }
+		def close() { sessionStatus = "closed"; logTrace("Session {} close", id) }
 		def setAutoCommit(isAuto: Boolean) { autoCommit = isAuto }
 	}
 

@@ -3,7 +3,6 @@ package jadeutils.comm.dao
 import java.lang.RuntimeException;
 
 trait Transaction {
-	protected var status = "ready"
 
 	def getId(): String
 	def isActive(): Boolean
@@ -15,7 +14,6 @@ trait Transaction {
 
 trait DaoSession {
 	protected var trans: Transaction = _
-	protected var status = "open"
 
 	def getId(): String
 	def isOpen(): Boolean
@@ -73,7 +71,7 @@ abstract class BaseTransactionService extends jadeutils.common.Logging {
 			}
 		} finally {
 			getSession.setAutoCommit(autoCommitBackup)
-			getSession.close()
+			//getSession.close()
 		}
 
 		if (null != result._2) throw result._2
@@ -90,8 +88,8 @@ abstract class BaseTransactionService extends jadeutils.common.Logging {
 		else if (m <:< manifest[Double]) 0
 		else if (m <:< manifest[Char]) '0'
 		else if (m <:< manifest[Boolean]) false
-		else if (m <:< manifest[Unit]) ()
-			else null
+		else if (m <:< manifest[Unit]) { () }
+		else null
 	}
 
 }
