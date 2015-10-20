@@ -30,27 +30,18 @@ trait DaoSession {
 trait DaoSessionFactory {
 	var session: DaoSession = _
 
-	def currentSession = session
 	def createSession(): DaoSession
-}
 
-trait DaoSessionFactoryHelper {
-	var session: DaoSession = _
-	lazy val sessionFactory = initSessionFactory()
-
-	def initSessionFactory(): DaoSessionFactory
-
-	def getSession = if (session != null && session.isOpen()) {
+	def currentSession = if (session != null && session.isOpen()) {
 		session  
-	} else sessionFactory.createSession()
-
+	} else createSession()
 }
 
 abstract class BaseTransactionService extends jadeutils.common.Logging {
 
-	val sfHelper: DaoSessionFactoryHelper
+	protected val sessionFactory: DaoSessionFactory
 
-	protected def getSession() = sfHelper.getSession
+	protected def getSession() = sessionFactory.currentSession
 
 	def withTransaction[T](callFunc: => T)(implicit m: Manifest[T]): T = {
 		warpSession(callFunc)
@@ -105,7 +96,7 @@ abstract class BaseTransactionService extends jadeutils.common.Logging {
 
 }
 
-traic Dao[T, K] {
+trait Dao[T, K] {
 	def getById(id: K): T
 	def insert(model: T): Unit
 }

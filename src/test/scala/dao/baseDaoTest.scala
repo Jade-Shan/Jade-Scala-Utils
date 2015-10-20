@@ -36,7 +36,7 @@ class SessionTest extends FunSuite with Logging {
 		def setAutoCommit(isAuto: Boolean) { autoCommit = isAuto }
 	}
 
-	class TestSessionFactory extends DaoSessionFactory with Logging {
+	object TestSessionFactory extends DaoSessionFactory with Logging {
 		private[this] var sessCount = 0
 
 		def createSession = if (null != session) session else {
@@ -46,14 +46,8 @@ class SessionTest extends FunSuite with Logging {
 		}
 	}
 
-	object TestSessionFactoryHelper extends DaoSessionFactoryHelper {
-
-		def initSessionFactory = new TestSessionFactory
-
-	}
-
 	class TestBaseService extends BaseTransactionService {
-		val sfHelper = TestSessionFactoryHelper
+		val sessionFactory = TestSessionFactory
 	}
 
 	class User(val id: Int, val name: String) {

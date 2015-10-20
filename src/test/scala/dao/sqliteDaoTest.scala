@@ -19,7 +19,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 		def rollback() { status = "rollbacked" }
 	}
 
-	class BaseSession(id: String, factory: BaseSessionFactory) 
+	class BaseSession(id: String, factory: BaseDaoSessionFactory) 
 	extends DaoSession with Logging 
 	{
 		private[this] val conn = new ThreadLocal[javax.sql.DataSource]; 
@@ -54,7 +54,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 		def setAutoCommit(isAuto: Boolean) { autoCommit = isAuto }
 	}
 
-	class BaseSessionFactory extends DaoSessionFactory with Logging { 
+	class BaseDaoSessionFactory extends DaoSessionFactory with Logging { 
 		val initPoolSize = 5
 		val minPoolSize = 3
 		val maxPoolSize = 10
@@ -91,12 +91,10 @@ class SqliteDaoTest extends FunSuite with Logging {
 
 	}
 
-	object BaseDaoSessionFactoryHelper extends DaoSessionFactoryHelper {
-		def initSessionFactory = new BaseSessionFactory 
-	}
+	object TestDaoSessionFactory extends BaseDaoSessionFactory
 
 	class TestBaseService extends BaseTransactionService {
-		val sfHelper = BaseDaoSessionFactoryHelper
+		val sessionFactory = TestDaoSessionFactory
 	}
 
 	class User(val id: Int, val name: String) {
@@ -132,7 +130,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	}
 
 	test("Test-session-pool") {
-		val fc = new BaseSessionFactory()
+		val fc = TestDaoSessionFactory
 		logInfo(".......... create new session")
 		val c1 = fc.createSession()
 		val c2 = fc.createSession()
