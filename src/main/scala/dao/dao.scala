@@ -31,29 +31,23 @@ trait DaoSessionFactory {
 	var session: DaoSession = _
 
 	def currentSession = session
-
 	def createSession(): DaoSession
-
 }
 
 abstract class BasicDao[T, K](session: DaoSession) {
-
 	def getById(id: K): T
-
 	def insert(model: T): Unit
-
 }
 
 trait DaoSessionFactoryHelper {
-
-	var _session: DaoSession = _
+	var session: DaoSession = _
+	lazy val sessionFactory = initSessionFactory()
 
 	def initSessionFactory(): DaoSessionFactory
 
-	lazy val sessionFactory = initSessionFactory()
-
-	def getSession = if (_session != null && _session.isOpen())
-	_session else sessionFactory.createSession()
+	def getSession = if (session != null && session.isOpen()) {
+		session  
+	} else sessionFactory.createSession()
 
 }
 

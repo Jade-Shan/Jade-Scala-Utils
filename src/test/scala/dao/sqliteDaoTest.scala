@@ -19,9 +19,10 @@ class SqliteDaoTest extends FunSuite with Logging {
 		def rollback() { status = "rollbacked" }
 	}
 
-	class AbstractSession(id: String, factory: AbstractSessionFactory) 
+	class BaseSession(id: String, factory: BaseSessionFactory) 
 	extends DaoSession with Logging 
 	{
+		private[this] val conn = new ThreadLocal[javax.sql.DataSource]; 
 		private[this] var transCount = 0
 		private[this] var autoCommit = true
 		private[this] var sessId = "BasicDaoSession: " + id
@@ -53,7 +54,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 		def setAutoCommit(isAuto: Boolean) { autoCommit = isAuto }
 	}
 
-	class AbstractSessionFactory extends DaoSessionFactory with Logging { 
+	class BaseSessionFactory extends DaoSessionFactory with Logging { 
 		val initPoolSize = 5
 		val minPoolSize = 3
 		val maxPoolSize = 10
@@ -73,7 +74,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 				throw new RuntimeException("Db connection Pool filled")
 
 			val sess = if (idleSess.size < 1) {
-				new AbstractSession("" + size, this)
+				new BaseSession("" + size, this)
 			} else idleSess.pop
 
 			actSesss.put(sess.getId, sess)
@@ -90,14 +91,12 @@ class SqliteDaoTest extends FunSuite with Logging {
 
 	}
 
-	object TestSessionFactoryHelper extends DaoSessionFactoryHelper {
-
-		def initSessionFactory = new AbstractSessionFactory 
-
+	object BaseDaoSessionFactoryHelper extends DaoSessionFactoryHelper {
+		def initSessionFactory = new BaseSessionFactory 
 	}
 
 	class TestBaseService extends BaseTransactionService {
-		val sfHelper = TestSessionFactoryHelper
+		val sfHelper = BaseDaoSessionFactoryHelper
 	}
 
 	class User(val id: Int, val name: String) {
@@ -135,7 +134,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	}
 
 	test("Test-session-pool") {
-		val fc = new AbstractSessionFactory()
+		val fc = new BaseSessionFactory()
 		logInfo(".......... create new session")
 		val c1 = fc.createSession()
 		val c2 = fc.createSession()
