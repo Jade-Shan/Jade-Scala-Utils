@@ -20,34 +20,26 @@ class SqliteDaoTest extends FunSuite with Logging {
 		def rollback() { transStatus = "rollbacked" }
 	}
 
-	class BaseSession(id: String, factory: BaseDaoSessionFactory) 
-	extends DaoSession with Logging 
+	class BaseDaoSession(id: String, dbConnection: java.sql.Connection, 
+		factory: BaseDaoSessionFactory) extends DaoSession with Logging 
 	{
-		private[this] val conn = new ThreadLocal[javax.sql.DataSource]; 
+		private[this] val conn = dbConnection
 		private[this] var transCount = 0
 		private[this] var autoCommit = true
 		private[this] var sessId = "BasicDaoSession: " + id
-		private[this] var sessionStatus = "open"
 
 		logTrace("DaoSession create: {}", sessId)
 
 		def getId = sessId
-		def isOpen = "open" == sessionStatus
+		def isBroken = conn.isClosed
 		def isAutoCommit = autoCommit
 		def getTransaction() = if (null != trans) trans else {
 			trans = new TestTransaction("" + transCount)
 			transCount = transCount + 1
 			trans
 		}
-		
-
-		def open()  {
-			sessionStatus= "open"
-			logTrace("Session {} open", id)
-		}
 
 		def close() {
-			sessionStatus = "closed"
 			factory.close(this)
 			logTrace("DaoSession close: {}", sessId)
 		}
@@ -55,7 +47,9 @@ class SqliteDaoTest extends FunSuite with Logging {
 		def setAutoCommit(isAuto: Boolean) { autoCommit = isAuto }
 	}
 
-	class BaseDaoSessionFactory extends DaoSessionFactory with Logging { 
+	abstract class BaseDaoSessionFactory extends DaoSessionFactory with Logging { 
+		private[this] val conn = new ThreadLocal[DaoSession]; 
+
 		val initPoolSize = 5
 		val minPoolSize = 3
 		val maxPoolSize = 10
@@ -70,17 +64,28 @@ class SqliteDaoTest extends FunSuite with Logging {
 
 		private[this] def size() = idleSess.size + actSesss.size
 
+
 		def createSession(): DaoSession = {
+			logTrace("size: {} >= max: {}", size, maxPoolSize)
 			if (size >= maxPoolSize) 
 				throw new RuntimeException("Db connection Pool filled")
 
-			val sess = if (idleSess.size < 1) {
-				new BaseSession("" + size, this)
-			} else idleSess.pop
-
+			val sess = nextSession()
 			actSesss.put(sess.getId, sess)
 
+			logTrace("size: {} ----- max: {} idle: {} \n active: {}", 
+				size, maxPoolSize, idleSess, actSesss)
 			sess
+		}
+
+		private[this] def nextSession(): DaoSession = {
+			val session  = if (idleSess.size < 1) {
+				new BaseDaoSession("" + size, createConnection(), this)
+			} else idleSess.pop
+
+			if (session.isBroken) {
+				nextSession()  // drop borken session, find next idle session
+			} else session
 		}
 
 		def close(session: DaoSession) {
@@ -88,14 +93,19 @@ class SqliteDaoTest extends FunSuite with Logging {
 				actSesss.remove(session.getId)
 				idleSess.push(session)
 			}
+			logTrace("size: {} ----- max: {} idle: {} \n active: {}", 
+				size, maxPoolSize, idleSess, actSesss)
 		}
 
 	}
 
-	object TestDaoSessionFactory extends BaseDaoSessionFactory
+	object SqliteDaoSessionFactory extends BaseDaoSessionFactory {
+		def createConnection = java.sql.DriverManager.getConnection(
+			"jdbc:sqlite:test.db")
+	}
 
 	class TestBaseService extends BaseTransactionService {
-		val sessionFactory = TestDaoSessionFactory
+		val sessionFactory = SqliteDaoSessionFactory
 	}
 
 	class User(val id: Int, val name: String) {
@@ -131,31 +141,32 @@ class SqliteDaoTest extends FunSuite with Logging {
 	}
 
 	test("Test-session-pool") {
-		val fc = TestDaoSessionFactory
-		logInfo(".......... create new session")
+		val fc = SqliteDaoSessionFactory
+		logInfo("......................... create new session\n")
 		val c1 = fc.createSession()
 		val c2 = fc.createSession()
 		val c3 = fc.createSession()
 		val c4 = fc.createSession()
 		val c5 = fc.createSession()
 		val c6 = fc.createSession()
-		logInfo(".......... close session")
+		logInfo("......................... close session\n")
 		c1.close
 		c2.close
 		c3.close
-		logInfo(".......... reuse in pool")
+		logInfo("......................... re-use in pool\n")
 		val c7 = fc.createSession()
 		val c8 = fc.createSession()
 		val c9 = fc.createSession()
-		logInfo(".......... full pool")
+		logInfo("......................... full pool\n")
 		val ca = fc.createSession()
 		val cb = fc.createSession()
 		val cc = fc.createSession()
 		val cd = fc.createSession()
-		logInfo(".......... out of max")
+		logInfo("......................... pool overfool\n")
 		intercept[java.lang.Exception] {
 			val ce = fc.createSession()
 		}
+		logInfo("......................... clean up\n")
 		c4.close
 		c5.close
 		c6.close
@@ -196,8 +207,8 @@ class SqliteDaoTest extends FunSuite with Logging {
 		val rs = stat.executeQuery("select * from people;")
 		while (rs.next())
 		{
-			println("name = " + rs.getString("name"))
-			println("job = " + rs.getString("occupation"))
+			logInfo("name = " + rs.getString("name"))
+			logInfo("job = " + rs.getString("occupation"))
 		}
 		rs.close();
 		conn.close();

@@ -25,7 +25,7 @@ class SessionTest extends FunSuite with Logging {
 		private[this] var sessionStatus = "open"
 
 		def getId = id
-		def isOpen = "open" == sessionStatus
+		def isBroken = "open" != sessionStatus
 		def isAutoCommit = autoCommit
 		def getTransaction() = if (null != trans) trans else {
 			trans = new TestTransaction("" + transCount)
@@ -33,13 +33,15 @@ class SessionTest extends FunSuite with Logging {
 			trans
 		}
 
-		def open()  { sessionStatus = "open";   logTrace("Session {} open", id) }
+//		def open()  { sessionStatus = "open";   logTrace("Session {} open", id) }
 		def close() { sessionStatus = "closed"; logTrace("Session {} close", id) }
 		def setAutoCommit(isAuto: Boolean) { autoCommit = isAuto }
 	}
 
 	object TestSessionFactory extends DaoSessionFactory with Logging {
 		private[this] var sessCount = 0
+
+		def createConnection() = null
 
 		def createSession = if (null != session) session else {
 			session = new TestSession("" + sessCount)

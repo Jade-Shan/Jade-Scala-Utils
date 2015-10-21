@@ -16,23 +16,32 @@ trait DaoSession {
 	protected var trans: Transaction = _
 
 	def getId(): String
-	def isOpen(): Boolean
+	def isBroken(): Boolean
 	def isAutoCommit(): Boolean
 	def getTransaction(): Transaction
 
 	def close(): Unit
-	def open(): Unit
+	// def open(): Unit
 	def setAutoCommit(isAuto: Boolean): Unit
+
+	override def toString = "(%s, %b, %b)".format(getId, isAutoCommit, isBroken)
 }
 
 trait DaoSessionFactory {
 	var session: DaoSession = _
 
+	protected def createConnection(): java.sql.Connection
+
 	def createSession(): DaoSession
 
-	def currentSession = if (session != null && session.isOpen()) {
+	def currentSession = if (session != null && session.isBroken()) {
 		session  
-	} else createSession()
+	} else {
+		if (null != session)
+			session.close()
+		createSession()
+	}
+
 }
 
 abstract class BaseTransactionService extends jadeutils.common.Logging {

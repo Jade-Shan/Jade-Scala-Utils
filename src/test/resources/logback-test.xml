@@ -15,7 +15,8 @@
   <property name="MAX_HISTORY" value="30"/>  
   <property name="MAX_SIZE" value="5MB"/>  
 	<property name="LOG_PTN_INFO"  value="%d{HH:mm:ss.SSS} %-5level - %msg%n" />
-	<property name="LOG_PTN_TRACE" value="%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36}.%method:%line - %msg%n" />
+	<property name="LOG_PTN_DETAIL" value="%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36}.%method:%line - %msg%n" />
+	<property name="LOG_PTN_TRACE" value="%msg%n" />
 
 	<!-- ==================================================================== -->
 	<!-- 日志输出                                                             -->
