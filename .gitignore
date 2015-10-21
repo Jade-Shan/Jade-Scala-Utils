@@ -8,6 +8,7 @@
 # vim specific
 *.swp
 tags
+*.db
 
 # maven specific
 target/
