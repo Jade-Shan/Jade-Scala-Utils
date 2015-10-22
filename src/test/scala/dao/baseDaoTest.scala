@@ -1,6 +1,8 @@
 package jadeutils.comm.dao
 
-import jadeutils.common._
+import jadeutils.common.Logging
+
+import java.sql.DriverManager
 
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
@@ -10,7 +12,7 @@ import org.junit.runner.RunWith
 class SessionTest extends FunSuite with Logging {
 
 	object SqliteDaoSessionFactory extends DaoSessionFactory {
-		def createConnection() = java.sql.DriverManager.getConnection(
+		def createConnection() = DriverManager.getConnection(
 			"jdbc:sqlite:test.db")
 	}
 

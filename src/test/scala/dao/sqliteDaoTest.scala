@@ -1,5 +1,7 @@
 package jadeutils.comm.dao
 
+import java.sql.DriverManager
+
 import jadeutils.common.Logging
 import jadeutils.common.EnvPropsComponent
 
@@ -10,7 +12,7 @@ import org.junit.runner.RunWith
 @RunWith(classOf[JUnitRunner])
 class SqliteDaoTest extends FunSuite with Logging {
 	object SqliteDaoSessionFactory extends DaoSessionFactory {
-		def createConnection() = java.sql.DriverManager.getConnection(
+		def createConnection() = DriverManager.getConnection(
 			"jdbc:sqlite:test.db")
 	}
 
@@ -91,7 +93,6 @@ class SqliteDaoTest extends FunSuite with Logging {
 
 
 	test("Test-Sqlite") {
-		import java.sql._
 
 		Class.forName("org.sqlite.JDBC")
 
