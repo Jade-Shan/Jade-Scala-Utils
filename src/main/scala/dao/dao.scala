@@ -139,6 +139,7 @@ abstract class BaseTransactionService extends Logging {
 }
 
 trait Dao[T, K] {
+
 	def getById(id: K): T
 	def insert(model: T): Unit
 }
