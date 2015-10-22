@@ -1,86 +1,121 @@
 package jadeutils.comm.dao
 
-import java.lang.RuntimeException;
+import java.lang.RuntimeException
+import java.sql.Connection
 
-trait Transaction {
+import jadeutils.common.Logging
 
-	def getId(): String
-	def isActive(): Boolean
+class DaoSession(val id: String, val connection: Connection, 
+	factory: DaoSessionFactory) extends Logging 
+{
+	def isBroken = connection.isClosed
+	var isInTrans = false
 
-	def begin(): Unit
-	def commit(): Unit
-	def rollback(): Unit
+	def close() {
+		factory.closeSession(this)
+		logTrace("DaoSession close: {}", id)
+	}
+
+	override def toString = "(%s, %b)".format(id, isBroken)
 }
 
-trait DaoSession {
-	protected var trans: Transaction = _
+abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int, 
+	val initPoolSize: Int) extends Logging 
+{ 
+	def this() = this(3, 10, 5)
 
-	def getId(): String
-	def isBroken(): Boolean
-	def isAutoCommit(): Boolean
-	def getTransaction(): Transaction
+	private[this] val idleSess = new scala.collection.mutable.Stack[DaoSession]
+	private[this] val actSesss = new scala.collection.mutable.HashMap[String, DaoSession]
+	private[this] def size() = idleSess.size + actSesss.size
 
-	def close(): Unit
-	// def open(): Unit
-	def setAutoCommit(isAuto: Boolean): Unit
+	def createConnection() : Connection
 
-	override def toString = "(%s, %b, %b)".format(getId, isAutoCommit, isBroken)
-}
+	private[this] val conn = new ThreadLocal[DaoSession]; 
 
-trait DaoSessionFactory {
-	var session: DaoSession = _
+	private[this] var session: DaoSession = _
 
-	protected def createConnection(): java.sql.Connection
-
-	def createSession(): DaoSession
-
-	def currentSession = if (session != null && session.isBroken()) {
+	def currentSession = if (session != null && !session.isBroken) {
 		session  
 	} else {
 		if (null != session)
-			session.close()
+			session.close
 		createSession()
+	}
+
+	def createSession(): DaoSession = {
+		logTrace("size: {} >= max: {}", size, maxPoolSize)
+		if (size >= maxPoolSize) 
+			throw new RuntimeException("Db connection Pool filled")
+
+		val sess = nextSession()
+		actSesss.put(sess.id, sess)
+		session = sess
+
+		logTrace("size: {} ----- max: {} idle: {} \n active: {}", 
+			size, maxPoolSize, idleSess, actSesss)
+		sess
+	}
+
+	private[this] def nextSession(): DaoSession = {
+		val sess  = if (idleSess.size < 1) {
+			new DaoSession("" + size, createConnection(), this)
+		} else idleSess.pop
+
+		if (sess.isBroken) {
+			nextSession()  // drop borken session, find next idle session
+		} else sess
+	}
+
+	def closeSession(sess: DaoSession) {
+		if (actSesss.contains(sess.id)) {
+			actSesss.remove(sess.id)
+			idleSess.push(sess)
+		}
+		logTrace("size: {} ----- max: {} idle: {} \n active: {}", 
+			size, maxPoolSize, idleSess, actSesss)
 	}
 
 }
 
-abstract class BaseTransactionService extends jadeutils.common.Logging {
+abstract class BaseTransactionService extends Logging {
 
 	protected val sessionFactory: DaoSessionFactory
-
-	protected def getSession() = sessionFactory.currentSession
 
 	def withTransaction[T](callFunc: => T)(implicit m: Manifest[T]): T = {
 		warpSession(callFunc)
 	}
 
 	private def warpSession[T](callFunc: => T)(implicit m: Manifest[T]): T = {
-		val autoCommitBackup = getSession.isAutoCommit
-		val trans = getSession.getTransaction
+		val sess = sessionFactory.currentSession
+		val conn = sess.connection
+		val autoCommitBackup = conn.getAutoCommit
 
-		if (!trans.isActive) {
-			trans.begin()
-			logTrace("Trans begin: S: {} T: {}", getSession.getId, trans.getId)
+		if (!sess.isInTrans) {
+			sess.isInTrans = true
+			conn.setAutoCommit(false)
+			logTrace("Trans begin: S: {}", sess.id)
 		}
 
 		var result = try {
 			var funcResult = callFunc
-			if (trans.isActive) {
-				trans.commit()
-				logTrace("Trans commit: S: {} T: {}", getSession.getId, trans.getId)
+			if (sess.isInTrans) {
+				conn.commit()
+				logTrace("Trans commit: S: {}", sess.id)
 			}
 			(funcResult, null)
 		} catch {
 			case e: RuntimeException => {
-				if (trans.isActive) {
-					trans.rollback()
-					logTrace("Trans rollback: S: {} T: {}", getSession.getId, trans.getId)
+				if (sess.isInTrans) {
+					conn.rollback()
+					logTrace("Trans rollback: S: {}", sess.id)
 				}
 				(generateDefaultResult(m), e)
 			}
 		} finally {
-			getSession.setAutoCommit(autoCommitBackup)
-			//getSession.close()
+			conn.setAutoCommit(autoCommitBackup)
+			sess.isInTrans = false
+			sess.close
+			logTrace("Trans end: S: {}", sess.id)
 		}
 
 		if (null != result._2) throw result._2
@@ -104,6 +139,7 @@ abstract class BaseTransactionService extends jadeutils.common.Logging {
 }
 
 trait Dao[T, K] {
+
 	def getById(id: K): T
 	def insert(model: T): Unit
 }

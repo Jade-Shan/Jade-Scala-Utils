@@ -1,6 +1,8 @@
 package jadeutils.comm.dao
 
-import jadeutils.common._
+import jadeutils.common.Logging
+
+import java.sql.DriverManager
 
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
@@ -9,49 +11,13 @@ import org.junit.runner.RunWith
 @RunWith(classOf[JUnitRunner])
 class SessionTest extends FunSuite with Logging {
 
-	class TestTransaction(val id: String) extends Transaction with Logging {
-		def getId = id
-		private[this] var transStatus = "ready"
-
-		def isActive = "active" == transStatus
-		def begin() { transStatus = "active" }
-		def commit() { transStatus = "commited" }
-		def rollback() { transStatus = "rollbacked" }
-	}
-
-	class TestSession(id: String) extends DaoSession with Logging {
-		private[this] var transCount = 0
-		private[this] var autoCommit = true
-		private[this] var sessionStatus = "open"
-
-		def getId = id
-		def isBroken = "open" != sessionStatus
-		def isAutoCommit = autoCommit
-		def getTransaction() = if (null != trans) trans else {
-			trans = new TestTransaction("" + transCount)
-			transCount = transCount + 1
-			trans
-		}
-
-//		def open()  { sessionStatus = "open";   logTrace("Session {} open", id) }
-		def close() { sessionStatus = "closed"; logTrace("Session {} close", id) }
-		def setAutoCommit(isAuto: Boolean) { autoCommit = isAuto }
-	}
-
-	object TestSessionFactory extends DaoSessionFactory with Logging {
-		private[this] var sessCount = 0
-
-		def createConnection() = null
-
-		def createSession = if (null != session) session else {
-			session = new TestSession("" + sessCount)
-			sessCount = sessCount + 1
-			session
-		}
+	object SqliteDaoSessionFactory extends DaoSessionFactory {
+		def createConnection() = DriverManager.getConnection(
+			"jdbc:sqlite:test.db")
 	}
 
 	class TestBaseService extends BaseTransactionService {
-		val sessionFactory = TestSessionFactory
+		val sessionFactory = SqliteDaoSessionFactory
 	}
 
 	class User(val id: Int, val name: String) {
@@ -80,7 +46,7 @@ class SessionTest extends FunSuite with Logging {
 	}
 
 	object UserService extends TestBaseService {
-		private val dao = new UserDao(getSession)
+		private val dao = new UserDao(sessionFactory.currentSession)
 
 		def getUser(id: Int): User = withTransaction { dao.getById(id) }
 		def insertUser(user: User) { withTransaction { dao.insert(user) } }
