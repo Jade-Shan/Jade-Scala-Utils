@@ -105,11 +105,12 @@
 		<appender-ref ref="APD-INFO-FILE" />
 	</root>
 
-	<!-- jadeutils.comm.dao 包的日志级别 -->
+	<!-- jadeutils.comm.dao 包的日志级别
 	<logger level="DEBUG" name="jadeutils.comm.dao" > 
 		<appender-ref ref="APD-TRACE-CSL" />
 		<appender-ref ref="APD-TRACE-FILE" />
 	</logger>
+			 -->
 
 	<!-- jadeutils.comm.dao 包的日志级别 -->
 	<logger level="TRACE" name="jadeutils.comm.dao" > 

@@ -9,98 +9,8 @@ import org.junit.runner.RunWith
 
 @RunWith(classOf[JUnitRunner])
 class SqliteDaoTest extends FunSuite with Logging {
-
-	class TestTransaction(val id: String) extends Transaction with Logging {
-		def getId = id
-		private[this] var transStatus = "ready"
-
-		def isActive = "active" == transStatus
-		def begin() { transStatus = "active" }
-		def commit() { transStatus = "commited" }
-		def rollback() { transStatus = "rollbacked" }
-	}
-
-	class BaseDaoSession(id: String, dbConnection: java.sql.Connection, 
-		factory: BaseDaoSessionFactory) extends DaoSession with Logging 
-	{
-		private[this] val conn = dbConnection
-		private[this] var transCount = 0
-		private[this] var autoCommit = true
-		private[this] var sessId = "BasicDaoSession: " + id
-
-		logTrace("DaoSession create: {}", sessId)
-
-		def getId = sessId
-		def isBroken = conn.isClosed
-		def isAutoCommit = autoCommit
-		def getTransaction() = if (null != trans) trans else {
-			trans = new TestTransaction("" + transCount)
-			transCount = transCount + 1
-			trans
-		}
-
-		def close() {
-			factory.close(this)
-			logTrace("DaoSession close: {}", sessId)
-		}
-
-		def setAutoCommit(isAuto: Boolean) { autoCommit = isAuto }
-	}
-
-	abstract class BaseDaoSessionFactory extends DaoSessionFactory with Logging { 
-		private[this] val conn = new ThreadLocal[DaoSession]; 
-
-		val initPoolSize = 5
-		val minPoolSize = 3
-		val maxPoolSize = 10
-
-		private[this] val idleSess = {
-			new scala.collection.mutable.Stack[DaoSession]
-		}
-
-		private[this] val actSesss = {
-			new scala.collection.mutable.HashMap[String, DaoSession]
-		}
-
-		private[this] def size() = idleSess.size + actSesss.size
-
-
-		def createSession(): DaoSession = {
-			logTrace("size: {} >= max: {}", size, maxPoolSize)
-			if (size >= maxPoolSize) 
-				throw new RuntimeException("Db connection Pool filled")
-
-			val sess = nextSession()
-			actSesss.put(sess.getId, sess)
-
-			logTrace("size: {} ----- max: {} idle: {} \n active: {}", 
-				size, maxPoolSize, idleSess, actSesss)
-			sess
-		}
-
-		private[this] def nextSession(): DaoSession = {
-			val session  = if (idleSess.size < 1) {
-				new BaseDaoSession("" + size, createConnection(), this)
-			} else idleSess.pop
-
-			if (session.isBroken) {
-				nextSession()  // drop borken session, find next idle session
-			} else session
-		}
-
-		def close(session: DaoSession) {
-			if (actSesss.contains(session.getId)) {
-				actSesss.remove(session.getId)
-				idleSess.push(session)
-			}
-			logTrace("size: {} ----- max: {} idle: {} \n active: {}", 
-				size, maxPoolSize, idleSess, actSesss)
-		}
-
-	}
-
-	object SqliteDaoSessionFactory extends BaseDaoSessionFactory {
-		def createConnection = java.sql.DriverManager.getConnection(
+	object SqliteDaoSessionFactory extends DaoSessionFactory {
+		def createConnection() = java.sql.DriverManager.getConnection(
 			"jdbc:sqlite:test.db")
 	}
 
@@ -134,7 +44,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	}
 
 	object UserService extends TestBaseService {
-		private val dao = new UserDao(getSession)
+		private val dao = new UserDao(sessionFactory.currentSession)
 
 		def getUser(id: Int): User = withTransaction { dao.getById(id) }
 		def insertUser(user: User) { withTransaction { dao.insert(user) } }
