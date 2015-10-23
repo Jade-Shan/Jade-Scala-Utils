@@ -1,6 +1,7 @@
 package jadeutils.comm.dao
 
 import java.sql.DriverManager
+import java.sql.Connection
 
 import jadeutils.common.Logging
 import jadeutils.common.EnvPropsComponent
@@ -37,7 +38,6 @@ class SqliteDaoTest extends FunSuite with Logging {
 		def getById(id: String): User = {
 			logTrace("before query")
 			val u = if (null != id) {
-				val stat = conn.createStatement()
 				val prep = conn.prepareStatement("select * from testuser where id = ?;")
 				prep.setString(1, id);
 				val rs = prep.executeQuery()
@@ -55,7 +55,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 
 		def insert(model: User)  {
 			logTrace("before insert")
-			if (null != model) {
+			if (null != model && null != model.id) {
 				val prep = conn.prepareStatement("insert into testuser values (?, ?);")
 
 				prep.setString(1, model.id);
@@ -75,94 +75,57 @@ class SqliteDaoTest extends FunSuite with Logging {
 
 		def getUser(id: String): User = withTransaction { dao.getById(id) }
 		def insertUser(user: User) { withTransaction { dao.insert(user) } }
+
+		def insertUserList(userlist: List[User]) {withTransaction { 
+			userlist.foreach((user) => {dao.insert(user)})
+		}}
 	}
 
-	test("Test-service-") {
+	def testInEnv(opts: (Connection) => Unit) {
 		Class.forName("org.sqlite.JDBC")
 		val conn = DriverManager.getConnection("jdbc:sqlite:test.db")
 		val stat = conn.createStatement()
-    stat.executeUpdate("drop table if exists testuser;")
-    stat.executeUpdate("create table testuser (id, name);")
+		stat.executeUpdate("drop table if exists testuser;")
+		stat.executeUpdate("create table testuser (id, name);")
+		opts(conn)
+		stat.executeUpdate("drop table if exists testuser;")
 		conn.close();
-
-		UserService.insertUser(new User("1", "jade"))
-		UserService.insertUser(new User("2", "yun"))
-
-		UserService.getUser("1")
-		UserService.getUser("2")
 	}
 
-//	test("Test-session-pool") {
-//		val fc = SqliteDaoSessionFactory
-//		logInfo("......................... create new session\n")
-//		val c1 = fc.createSession()
-//		val c2 = fc.createSession()
-//		val c3 = fc.createSession()
-//		val c4 = fc.createSession()
-//		val c5 = fc.createSession()
-//		val c6 = fc.createSession()
-//		logInfo("......................... close session\n")
-//		c1.close
-//		c2.close
-//		c3.close
-//		logInfo("......................... re-use in pool\n")
-//		val c7 = fc.createSession()
-//		val c8 = fc.createSession()
-//		val c9 = fc.createSession()
-//		logInfo("......................... full pool\n")
-//		val ca = fc.createSession()
-//		val cb = fc.createSession()
-//		val cc = fc.createSession()
-//		val cd = fc.createSession()
-//		logInfo("......................... pool overfool\n")
-//		intercept[java.lang.Exception] {
-//			val ce = fc.createSession()
-//		}
-//		logInfo("......................... clean up\n")
-//		c4.close
-//		c5.close
-//		c6.close
-//		c7.close
-//		c8.close
-//		c9.close
-//		ca.close
-//		cb.close
-//		cc.close
-//		cd.close
-//	}
-//
-//
-//	test("Test-Sqlite") {
-//
-//		Class.forName("org.sqlite.JDBC")
-//
-//		val conn = DriverManager.getConnection("jdbc:sqlite:test.db")
-//		val stat = conn.createStatement()
-//    stat.executeUpdate("drop table if exists people;")
-//    stat.executeUpdate("create table people (name, occupation);")
-//    val prep = conn.prepareStatement("insert into people values (?, ?);")
-//
-//    prep.setString(1, "Gandhi");
-//    prep.setString(2, "politics");
-//    prep.addBatch();
-//    prep.setString(1, "Turing");
-//    prep.setString(2, "computers");
-//    prep.addBatch();
-//    prep.setString(1, "Wittgenstein");
-//    prep.setString(2, "smartypants");
-//    prep.addBatch();
-//
-//		conn.setAutoCommit(false)
-//		prep.executeBatch()
-//		conn.setAutoCommit(true)
-//		val rs = stat.executeQuery("select * from people;")
-//		while (rs.next())
-//		{
-//			logInfo("name = " + rs.getString("name"))
-//			logInfo("job = " + rs.getString("occupation"))
-//		}
-//		rs.close();
-//		conn.close();
-//	}
+	test("Test-Trans-commit") {
+		testInEnv((conn) => {
+				logInfo("......................... will commit\n")
+				UserService.insertUserList(new User("1", "jade") :: 
+					new User("2", "yun") :: new User("3", "wendy") :: 
+					new User("4", "wen") :: new User("5", "tiantian") :: Nil)
+				val u1 = UserService.getUser("1")
+				val u2 = UserService.getUser("2")
+				val u3 = UserService.getUser("3")
+				val u4 = UserService.getUser("4")
+				val u5 = UserService.getUser("5")
+				assert("1" == u1.id && "jade" == u1.name)
+				assert("2" == u2.id && "yun" == u2.name)
+				assert("3" == u3.id && "wendy" == u3.name)
+				assert("4" == u4.id && "wen" == u4.name)
+				assert("5" == u5.id && "tiantian" == u5.name)
+			})
+	}
+
+	test("Test-trans-rollback") {
+		testInEnv((conn) => {
+				logInfo("......................... will rollback\n")
+				intercept[java.lang.Exception] {
+					UserService.insertUserList(new User("1", "jade") :: 
+						new User("2", "yun") :: new User("3", "wendy") :: 
+						new User("4", "wen") :: new User(null, "tiantian") :: Nil)
+				}
+
+				assert(null == UserService.getUser("1"))
+				assert(null == UserService.getUser("2"))
+				assert(null == UserService.getUser("3"))
+				assert(null == UserService.getUser("4"))
+				assert(null == UserService.getUser("5"))
+			})
+	}
 
 }

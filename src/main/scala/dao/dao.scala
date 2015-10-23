@@ -11,10 +11,7 @@ class DaoSession(val id: String, val connection: Connection,
 	def isBroken = connection.isClosed
 	var isInTrans = false
 
-	def close() {
-		factory.closeSession(this)
-		logTrace("DaoSession close: {}", id)
-	}
+	def close() { factory.closeSession(this) }
 
 	override def toString = "(%s, %b)".format(id, isBroken)
 }
@@ -43,7 +40,6 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 	}
 
 	def createSession(): DaoSession = {
-		logTrace("size: {} >= max: {}", size, maxPoolSize)
 		if (size >= maxPoolSize) 
 			throw new RuntimeException("Db connection Pool filled")
 
@@ -51,7 +47,8 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 		actSesss.put(sess.id, sess)
 		session = sess
 
-		logTrace("size: {} ----- max: {} idle: {} \n active: {}", 
+		logTrace(
+			"after create session: size: {} ----- max: {}\nidle: {}\nactive: {}", 
 			size, maxPoolSize, idleSess, actSesss)
 		sess
 	}
@@ -71,7 +68,8 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 			actSesss.remove(sess.id)
 			idleSess.push(sess)
 		}
-		logTrace("size: {} ----- max: {} idle: {} \n active: {}", 
+		logTrace(
+			"after close session: size: {} ----- max: {}\nidle: {}\nactive: {}", 
 			size, maxPoolSize, idleSess, actSesss)
 	}
 
