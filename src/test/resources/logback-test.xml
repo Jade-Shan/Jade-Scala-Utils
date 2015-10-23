@@ -14,8 +14,7 @@
 	<!-- 日志最大的历史 30天 --> 
   <property name="MAX_HISTORY" value="30"/>  
   <property name="MAX_SIZE" value="5MB"/>  
-	<property name="LOG_PTN_INFO"  value="%d{HH:mm:ss.SSS} %-5level - %msg%n" />
-	<property name="LOG_PTN_DETAIL" value="%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36}.%method:%line - %msg%n" />
+	<property name="LOG_PTN_INFO"  value="%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36}.%method:%line - %msg%n" />
 	<property name="LOG_PTN_TRACE" value="%msg%n" />
 
 	<!-- ==================================================================== -->
@@ -28,7 +27,7 @@
 			<level>TRACE</level><onMatch>DENY</onMatch>
 		</filter>
 		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>${LOGENV}-${LOG_PTN_INFO}</pattern>
+			<pattern>${LOGENV} - ${LOG_PTN_INFO}</pattern>
 		</encoder>
 	</appender>
 
@@ -42,7 +41,7 @@
 			<level>INFO</level><onMatch>DENY</onMatch>
 		</filter>
 		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>${LOGENV}-${LOG_PTN_TRACE}</pattern>
+			<pattern>${LOGENV} - ${LOG_PTN_TRACE}</pattern>
 		</encoder>
 	</appender>
 
@@ -60,7 +59,7 @@
 			<level>DEBUG</level><onMatch>DENY</onMatch>
 		</filter>
 		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder"> 
-			<pattern>${LOGENV}-${LOG_PTN_INFO}</pattern>
+			<pattern>${LOGENV} - ${LOG_PTN_INFO}</pattern>
 		</encoder> 
 	</appender> 
 
@@ -78,7 +77,7 @@
 			<level>INFO</level><onMatch>DENY</onMatch>
 		</filter>
 		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder"> 
-			<pattern>${LOGENV}-${LOG_PTN_TRACE}</pattern>
+			<pattern>${LOGENV} - ${LOG_PTN_TRACE}</pattern>
 		</encoder> 
 	</appender> 
 
@@ -105,17 +104,18 @@
 		<appender-ref ref="APD-INFO-FILE" />
 	</root>
 
-	<!-- jadeutils.comm.dao 包的日志级别
-	<logger level="DEBUG" name="jadeutils.comm.dao" > 
+	<!-- jadeutils.comm.dao 包的日志级别 -->
+	<logger level="TRACE" name="jadeutils.comm.dao.SessionTest" > 
 		<appender-ref ref="APD-TRACE-CSL" />
 		<appender-ref ref="APD-TRACE-FILE" />
 	</logger>
-			 -->
 
 	<!-- jadeutils.comm.dao 包的日志级别 -->
-	<logger level="TRACE" name="jadeutils.comm.dao" > 
+	<logger level="DEBUG" name="jadeutils.comm.dao.SqliteDaoTest" > 
+		<!-- 
 		<appender-ref ref="APD-TRACE-CSL" />
 		<appender-ref ref="APD-TRACE-FILE" />
+				 -->
 	</logger>
 
 	<!-- show parameters for hibernate sql 专为 Hibernate 定制 --> 
