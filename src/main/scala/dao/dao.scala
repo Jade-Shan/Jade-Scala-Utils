@@ -27,15 +27,15 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 
 	def createConnection() : Connection
 
-	private[this] val conn = new ThreadLocal[DaoSession]; 
+	private[this] var currSession = new ThreadLocal[DaoSession]
 
-	private[this] var session: DaoSession = _
-
-	def currentSession = if (session != null && !session.isBroken) {
-		session  
+	def currentSession = if ( currSession.get != null && 
+		!currSession.get.isBroken)
+	{
+		currSession.get  
 	} else {
-		if (null != session)
-			session.close
+		if (null != currSession.get)
+			currSession.get.close
 		createSession()
 	}
 
@@ -45,7 +45,7 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 
 		val sess = nextSession()
 		actSesss.put(sess.id, sess)
-		session = sess
+		currSession.set(sess)
 
 		logTrace(
 			"after create session: size: {} ----- max: {}\nidle: {}\nactive: {}", 
