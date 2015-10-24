@@ -90,6 +90,7 @@ abstract class BaseTransactionService extends Logging {
 
 		if (!sess.isInTrans) {
 			sess.isInTrans = true
+			conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE)
 			conn.setAutoCommit(false)
 			logTrace("Trans begin: S: {}", sess.id)
 		}
