@@ -5,6 +5,16 @@ import java.sql.Connection
 
 import jadeutils.common.Logging
 
+object TransIso extends Enumeration {
+	type TransIso = Value
+	val NONE             = Value(Connection.TRANSACTION_NONE,            "NONE")
+	val READ_COMMITTED   = Value(Connection.TRANSACTION_READ_COMMITTED,  "READ_COMMITTED")
+	val READ_UNCOMMITTED = Value(Connection.TRANSACTION_READ_UNCOMMITTED,"READ_UNCOMMITTED")
+	val REPEATABLE_READ  = Value(Connection.TRANSACTION_REPEATABLE_READ, "REPEATABLE_READ")
+	val SERIALIZABLE     = Value(Connection.TRANSACTION_SERIALIZABLE,    "SERIALIZABLE")
+}
+
+
 class DaoSession(val id: String, val connection: Connection, 
 	factory: DaoSessionFactory) extends Logging 
 {
@@ -19,6 +29,7 @@ class DaoSession(val id: String, val connection: Connection,
 abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int, 
 	val initPoolSize: Int) extends Logging 
 { 
+	val defaultIsolation: TransIso.TransIso
 	def this() = this(3, 10, 5)
 
 	private[this] val idleSess = new scala.collection.mutable.Stack[DaoSession]
@@ -80,17 +91,18 @@ abstract class BaseTransactionService extends Logging {
 	protected val sessionFactory: DaoSessionFactory
 
 	def withTransaction[T](callFunc: => T)(implicit m: Manifest[T]): T = {
-		warpSession(callFunc)
+		warpSession(sessionFactory.defaultIsolation, callFunc)
 	}
 
-	private def warpSession[T](callFunc: => T)(implicit m: Manifest[T]): T = {
+	private def warpSession[T](iso: TransIso.TransIso, callFunc: => T)
+	(implicit m: Manifest[T]): T = {
 		val sess = sessionFactory.currentSession
 		val conn = sess.connection
 		val autoCommitBackup = conn.getAutoCommit
 
 		if (!sess.isInTrans) {
 			sess.isInTrans = true
-			conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE)
+			conn.setTransactionIsolation(iso.id)
 			conn.setAutoCommit(false)
 			logTrace("Trans begin: S: {}", sess.id)
 		}
