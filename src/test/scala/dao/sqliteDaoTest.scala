@@ -14,7 +14,7 @@ import org.junit.runner.RunWith
 class SqliteDaoTest extends FunSuite with Logging {
 
 	object SqliteDaoSessionFactory extends DaoSessionFactory {
-		val defaultIsolation = jadeutils.comm.dao.TransProp.SERIALIZABLE
+		val defaultIsolation = java.sql.Connection.TRANSACTION_SERIALIZABLE
 
 		def createConnection() = {
 			Class.forName("org.sqlite.JDBC")
