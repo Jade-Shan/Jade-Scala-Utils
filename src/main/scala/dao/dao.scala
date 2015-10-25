@@ -5,13 +5,13 @@ import java.sql.Connection
 
 import jadeutils.common.Logging
 
-object TransIso extends Enumeration {
-	type TransIso = Value
-	val NONE             = Value(Connection.TRANSACTION_NONE,            "NONE")
-	val READ_COMMITTED   = Value(Connection.TRANSACTION_READ_COMMITTED,  "READ_COMMITTED")
-	val READ_UNCOMMITTED = Value(Connection.TRANSACTION_READ_UNCOMMITTED,"READ_UNCOMMITTED")
-	val REPEATABLE_READ  = Value(Connection.TRANSACTION_REPEATABLE_READ, "REPEATABLE_READ")
-	val SERIALIZABLE     = Value(Connection.TRANSACTION_SERIALIZABLE,    "SERIALIZABLE")
+object TransProp extends Enumeration {
+	type TransProp = Value
+	val NONE             = Value(0, "NONE")
+	val READ_COMMITTED   = Value(1, "READ_COMMITTED")
+	val READ_UNCOMMITTED = Value(0, "READ_UNCOMMITTED")
+	val REPEATABLE_READ  = Value(3, "REPEATABLE_READ")
+	val SERIALIZABLE     = Value(4, "SERIALIZABLE")
 }
 
 
@@ -29,7 +29,8 @@ class DaoSession(val id: String, val connection: Connection,
 abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int, 
 	val initPoolSize: Int) extends Logging 
 { 
-	val defaultIsolation: TransIso.TransIso
+	import jadeutils.comm.dao.TransProp.TransProp
+	val defaultIsolation: TransProp
 	def this() = this(3, 10, 5)
 
 	private[this] val idleSess = new scala.collection.mutable.Stack[DaoSession]
@@ -87,14 +88,15 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 }
 
 abstract class BaseTransactionService extends Logging {
+	import jadeutils.comm.dao.TransProp.TransProp
 
 	protected val sessionFactory: DaoSessionFactory
 
 	def withTransaction[T](callFunc: => T)(implicit m: Manifest[T]): T = {
-		warpSession(sessionFactory.defaultIsolation, callFunc)
+		warpSession(sessionFactory.defaultIsolation :: Nil, callFunc)
 	}
 
-	private def warpSession[T](iso: TransIso.TransIso, callFunc: => T)
+	private def warpSession[T](props: List[TransProp], callFunc: => T)
 	(implicit m: Manifest[T]): T = {
 		val sess = sessionFactory.currentSession
 		val conn = sess.connection
@@ -102,7 +104,7 @@ abstract class BaseTransactionService extends Logging {
 
 		if (!sess.isInTrans) {
 			sess.isInTrans = true
-			conn.setTransactionIsolation(iso.id)
+			updateTransProp(props)
 			conn.setAutoCommit(false)
 			logTrace("Trans begin: S: {}", sess.id)
 		}
@@ -134,7 +136,18 @@ abstract class BaseTransactionService extends Logging {
 		result._1.asInstanceOf[T]
 	}
 
-	private def generateDefaultResult[T](m: Manifest[T]): Any = {
+	private[this] def updateTransProp(props: List[TransProp]) {
+		props.foreach(_ match {
+				case TransProp.NONE => conn.setTransactionIsolation(Connection.TRANSACTION_NONE)
+				case TransProp.READ_COMMITTED => conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED)
+				case TransProp.READ_UNCOMMITTED => conn.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED)
+				case TransProp.REPEATABLE_READ => conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ)
+				case TransProp.SERIALIZABLE => conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE)
+				case _ => logError("Unknow Trans Prop")
+			})
+	}
+
+	private[this] def generateDefaultResult[T](m: Manifest[T]): Any = {
 		if (m <:< manifest[Byte]) 0
 		else if (m <:< manifest[Short]) 0
 		else if (m <:< manifest[Int]) 0
