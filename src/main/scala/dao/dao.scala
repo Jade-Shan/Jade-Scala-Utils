@@ -7,11 +7,11 @@ import jadeutils.common.Logging
 
 object TransProp extends Enumeration {
 	type TransProp = Value
-	val NONE             = Value(Connection.TRANSACTION_NONE,            "NONE")
-	val READ_COMMITTED   = Value(Connection.TRANSACTION_READ_COMMITTED,  "READ_COMMITTED")
-	val READ_UNCOMMITTED = Value(Connection.TRANSACTION_READ_UNCOMMITTED,"READ_UNCOMMITTED")
-	val REPEATABLE_READ  = Value(Connection.TRANSACTION_REPEATABLE_READ, "REPEATABLE_READ")
-	val SERIALIZABLE     = Value(Connection.TRANSACTION_SERIALIZABLE,    "SERIALIZABLE")
+	val NONE             = Value(0, "NONE")
+	val READ_COMMITTED   = Value(1, "READ_COMMITTED")
+	val READ_UNCOMMITTED = Value(2, "READ_UNCOMMITTED")
+	val REPEATABLE_READ  = Value(3, "REPEATABLE_READ")
+	val SERIALIZABLE     = Value(4, "SERIALIZABLE")
 }
 
 
@@ -104,8 +104,7 @@ abstract class BaseTransactionService extends Logging {
 
 		if (!sess.isInTrans) {
 			sess.isInTrans = true
-			conn.setTransactionIsolation(props(0).id)
-//			updateTransProp(conn, props)
+			updateTransProp(conn, props)
 			conn.setAutoCommit(false)
 			logTrace("Trans begin: S: {}", sess.id)
 		}
