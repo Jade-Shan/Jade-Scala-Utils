@@ -141,15 +141,13 @@ class UtilsTest extends FunSuite {
 	lazy val logger = UtilsTest.logger
 
 	test("test-format-js") {
-		val hu = new HttpBeautifyUtils
-		val res = hu.formatJs("""if (a >0) { "<a href=\"http://www.google.com\">google</a>" } else { "<input type=\"text\" />" }""")
+		val res = HttpBeautifyUtils.formatJs("""if (a >0) { "<a href=\"http://www.google.com\">google</a>" } else { "<input type=\"text\" />" }""")
 		assert(
-		"""|if (a > 0) {
-			 |    "<a href=\"http://www.google.com\">google</a>"
-			 |} else {
-			 |    "<input type=\"text\" />"
-			 |}""".stripMargin
-			== res.toString)
+			"""|if (a > 0) {
+				|    "<a href=\"http://www.google.com\">google</a>"
+				|} else {
+				|    "<input type=\"text\" />"
+				|}""".stripMargin == res)
 	}
 
 }

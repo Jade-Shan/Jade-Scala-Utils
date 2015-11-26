@@ -206,45 +206,53 @@ object JsoupUtils {
 
 }
 
-
-
-class HttpBeautifyUtils {
-	import scala.io.Source
+object JavascriptUtils {
 	import org.mozilla.javascript.Context
 	import org.mozilla.javascript.Scriptable
 
-	val ctx = Context.enter
+	def enterContext = Context.enter
 
-	val jsBeautyScop: Scriptable = {
-		val scope = ctx.initStandardObjects()
+	def evaluateString(scope: Scriptable, scripts: String) = {
+		val ctx = Context.enter
+		val newScope = if (null == scope) ctx.initStandardObjects() else scope
+		val res = ctx.evaluateString(newScope, scripts, null, 0, null)
+		(newScope, res.toString)
+	}
+
+	def evaluateString(scripts: String): (Scriptable, String) = evaluateString(
+		null, scripts) 
+	
+}
+
+class HttpBeautifyUtils { }
+object HttpBeautifyUtils extends Logging {
+	import scala.io.Source
+	import org.mozilla.javascript.Scriptable
+
+	private[this] val jsBeautyScop: Scriptable = {
 		val scripts = Source.fromInputStream(classOf[HttpBeautifyUtils]
 			.getResourceAsStream("/js/beautifyjs/beautify.js")).mkString
-		ctx.evaluateString(scope, scripts, null, 0, null)
-		scope
+		JavascriptUtils.evaluateString(scripts)._1
 	}
 
-	val cssBeautyScop: Scriptable = {
-		val scope = ctx.initStandardObjects()
+	private[this] val cssBeautyScop: Scriptable = {
 		val scripts = Source.fromInputStream(classOf[HttpBeautifyUtils]
 			.getResourceAsStream("/js/beautifyjs/beautify-css.js")).mkString
-		ctx.evaluateString(scope, scripts, null, 0, null)
-		scope
+		JavascriptUtils.evaluateString(scripts)._1
 	}
 
-	val htmlBeautyScop: Scriptable = {
-		val scope = ctx.initStandardObjects()
+	private[this] val htmlBeautyScop: Scriptable = {
 		val scripts = Source.fromInputStream(classOf[HttpBeautifyUtils]
 			.getResourceAsStream("/js/beautifyjs/beautify-html.js")).mkString
-		ctx.evaluateString(scope, scripts, null, 0, null)
-		scope
+		JavascriptUtils.evaluateString(scripts)._1
 	}
 
 	def formatJs(str: String) = {
-		val code = str.replaceAll("""\\""","""\\\\""").replaceAll(""""""", """\\"""")
-			.replaceAll("\n", "\\\\n")
-		println(code)
-		println("""js_beautify("%s")""" format code)
-		ctx.evaluateString(jsBeautyScop, """js_beautify("%s")""" format code, null, 0, null)
+		val code = str.replaceAll("""\\""","""\\\\""").replaceAll(
+			""""""", "\\\\\"") .replaceAll("\n", "\\\\n")
+		logger.debug(code)
+		val scripts = """js_beautify("%s")""" format code
+		logger.debug(scripts)
+		JavascriptUtils.evaluateString(jsBeautyScop, scripts)._2;
 	}
-
 }
