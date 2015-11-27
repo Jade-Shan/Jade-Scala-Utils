@@ -148,6 +148,14 @@ class UtilsTest extends FunSuite {
 		logger.info(result._2)
 	}
 
+	test("test-run-js2") {
+		import scala.io.Source
+		val scripts = Source.fromFile("test2.js").mkString
+		logger.info(scripts)
+		val result = JavascriptUtils.evaluateString(scripts + "; d[0];")
+		logger.info(result._2)
+	}
+
 	test("test-format-js") {
 		val res = HttpBeautifyUtils.formatJs("""if (a >0) { "<a href=\"http://www.google.com\">google</a>" } else { "<input type=\"text\" />" }""")
 		assert(
