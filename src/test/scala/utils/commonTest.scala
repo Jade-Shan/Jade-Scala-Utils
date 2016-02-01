@@ -140,16 +140,30 @@ object JsonTest {
 class UtilsTest extends FunSuite {
 	lazy val logger = UtilsTest.logger
 
+	test("test-run-js") {
+		import scala.io.Source
+		val scripts = Source.fromFile("test.js").mkString
+		logger.info(scripts)
+		val result = JavascriptUtils.evaluateString(scripts + "; d[0];")
+		logger.info(result._2)
+	}
+
+	test("test-run-js2") {
+		import scala.io.Source
+		val scripts = Source.fromFile("test2.js").mkString
+		logger.info(scripts)
+		val result = JavascriptUtils.evaluateString(scripts + "; d[0];")
+		logger.info(result._2)
+	}
+
 	test("test-format-js") {
-		val hu = new HttpBeautifyUtils
-		val res = hu.formatJs("""if (a >0) { "<a href=\"http://www.google.com\">google</a>" } else { "<input type=\"text\" />" }""")
+		val res = HttpBeautifyUtils.formatJs("""if (a >0) { "<a href=\"http://www.google.com\">google</a>" } else { "<input type=\"text\" />" }""")
 		assert(
-		"""|if (a > 0) {
-			 |    "<a href=\"http://www.google.com\">google</a>"
-			 |} else {
-			 |    "<input type=\"text\" />"
-			 |}""".stripMargin
-			== res.toString)
+			"""|if (a > 0) {
+				|    "<a href=\"http://www.google.com\">google</a>"
+				|} else {
+				|    "<input type=\"text\" />"
+				|}""".stripMargin == res)
 	}
 
 }

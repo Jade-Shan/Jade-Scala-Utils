@@ -5,6 +5,24 @@ import java.sql.Connection
 
 import jadeutils.common.Logging
 
+// PROPAGATION_REQUIRED -- 支持当前事务，如果当前没有事务，就新建一个事务。这是最常见的选择。
+// PROPAGATION_SUPPORTS -- 支持当前事务，如果当前没有事务，就以非事务方式执行。
+// PROPAGATION_MANDATORY -- 支持当前事务，如果当前没有事务，就抛出异常。
+// PROPAGATION_REQUIRES_NEW -- 新建事务，如果当前存在事务，把当前事务挂起。
+// PROPAGATION_NOT_SUPPORTED -- 以非事务方式执行操作，如果当前存在事务，就把当前事务挂起。
+// PROPAGATION_NEVER -- 以非事务方式执行，如果当前存在事务，则抛出异常。
+// PROPAGATION_NESTED -- 如果当前存在事务，则在嵌套事务内执行。如果当前没有事务，则进行与PROPAGATION_REQUIRED类似的操作。 
+object TransNesting extends Enumeration {
+	type TransNesting = Value
+	val REQUIRED      = Value(0, "REQUIRED")
+	val SUPPORTS      = Value(1, "SUPPORTS")
+	val MANDATORY     = Value(2, "MANDATORY")
+	val REQUIRES_NEW  = Value(3, "REQUIRES_NEW")
+	val NOT_SUPPORTED = Value(4, "NOT_SUPPORTED")
+  val NEVER         = Value(5, "NEVER")
+  val NESTED        = Value(6, "NESTED")
+}
+
 class DaoSession(val id: String, val connection: Connection, 
 	factory: DaoSessionFactory) extends Logging 
 {
@@ -19,23 +37,24 @@ class DaoSession(val id: String, val connection: Connection,
 abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int, 
 	val initPoolSize: Int) extends Logging 
 { 
-	def this() = this(3, 10, 5)
+	val defaultIsolation: Int
 
 	private[this] val idleSess = new scala.collection.mutable.Stack[DaoSession]
 	private[this] val actSesss = new scala.collection.mutable.HashMap[String, DaoSession]
 	private[this] def size() = idleSess.size + actSesss.size
+	private[this] var currSession = new ThreadLocal[DaoSession]
+
+	def this() = this(3, 10, 5)
 
 	def createConnection() : Connection
 
-	private[this] val conn = new ThreadLocal[DaoSession]; 
-
-	private[this] var session: DaoSession = _
-
-	def currentSession = if (session != null && !session.isBroken) {
-		session  
+	def currentSession = if ( currSession.get != null && 
+		!currSession.get.isBroken)
+	{
+		currSession.get  
 	} else {
-		if (null != session)
-			session.close
+		if (null != currSession.get)
+			currSession.get.close
 		createSession()
 	}
 
@@ -45,7 +64,7 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 
 		val sess = nextSession()
 		actSesss.put(sess.id, sess)
-		session = sess
+		currSession.set(sess)
 
 		logTrace(
 			"after create session: size: {} ----- max: {}\nidle: {}\nactive: {}", 
@@ -76,20 +95,38 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 }
 
 abstract class BaseTransactionService extends Logging {
+	import jadeutils.comm.dao.TransNesting.TransNesting
 
 	protected val sessionFactory: DaoSessionFactory
 
+	def withTransaction[T](nesting: TransNesting, iso: Int, 
+		callFunc: => T)(implicit m: Manifest[T]): T = 
+	{ warpSession(nesting, iso, callFunc) }
+
+	def withTransaction[T](nesting: TransNesting, callFunc: => T)
+	(implicit m: Manifest[T]): T = 
+	{ warpSession(nesting, sessionFactory.defaultIsolation, callFunc) }
+
+	def withTransaction[T](iso: Int, 
+		callFunc: => T)(implicit m: Manifest[T]): T = 
+	{ warpSession(TransNesting.REQUIRED, iso, callFunc) }
+
 	def withTransaction[T](callFunc: => T)(implicit m: Manifest[T]): T = {
-		warpSession(callFunc)
+		warpSession(TransNesting.REQUIRED, sessionFactory.defaultIsolation, 
+			callFunc)
 	}
 
-	private def warpSession[T](callFunc: => T)(implicit m: Manifest[T]): T = {
+	private def warpSession[T](nesting: TransNesting, iso: Int, 
+		callFunc: => T)(implicit m: Manifest[T]): T = 
+	{
 		val sess = sessionFactory.currentSession
 		val conn = sess.connection
 		val autoCommitBackup = conn.getAutoCommit
 
 		if (!sess.isInTrans) {
 			sess.isInTrans = true
+			conn.setTransactionIsolation(iso)
+			// dealwithTransNesting(conn, nesting)
 			conn.setAutoCommit(false)
 			logTrace("Trans begin: S: {}", sess.id)
 		}
@@ -121,7 +158,20 @@ abstract class BaseTransactionService extends Logging {
 		result._1.asInstanceOf[T]
 	}
 
-	private def generateDefaultResult[T](m: Manifest[T]): Any = {
+//	private[this] def dealwithTransNesting(conn: Connection, nesting: TransNesting) {
+//		nesting match {
+//			case TransNesting.REQUIRED      => {}
+//			case TransNesting.SUPPORTS      => {}
+//			case TransNesting.MANDATORY     => {}
+//			case TransNesting.REQUIRES_NEW  => {}
+//			case TransNesting.NOT_SUPPORTED => {}
+//			case TransNesting.NEVER         => {}
+//			case TransNesting.NESTED        => {}
+//			case _ => logError("Unknow Trans Prop")
+//		}
+//	}
+
+	private[this] def generateDefaultResult[T](m: Manifest[T]): Any = {
 		if (m <:< manifest[Byte]) 0
 		else if (m <:< manifest[Short]) 0
 		else if (m <:< manifest[Int]) 0
