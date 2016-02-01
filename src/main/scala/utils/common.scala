@@ -156,6 +156,39 @@ trait Logging {
 
 	def getLoggerByName(name: String) = LoggerFactory.getLogger(name)
 
+	private def matchLog(logFunc: (Seq[AnyRef]) => Unit, args: AnyRef*) { 
+		args.toList match {
+			case (h: TraversableOnce[_]) :: Nil => logFunc(h.toSeq.asInstanceOf[Seq[AnyRef]])
+			case (h: Array[_]) :: Nil => logFunc(h.toSeq.asInstanceOf[Seq[AnyRef]])
+			case _ => logFunc(args)
+		}
+	}
+
+	def logTrace(msg: String, refs: Any*) {
+		if (logger.isTraceEnabled) 
+			matchLog((arrs) => { logger.trace(msg, arrs: _*) }, refs)
+	}
+
+	def logDebug(msg: String, refs: Any*) {
+		if (logger.isDebugEnabled) 
+			matchLog((arrs) => { logger.debug(msg, arrs: _*) }, refs)
+	}
+
+	def logInfo(msg: String, refs: Any*) {
+		if (logger.isInfoEnabled) 
+			matchLog((arrs) => { logger.info(msg, arrs: _*) }, refs)
+	}
+
+	def logWarn(msg: String, refs: Any*) {
+		if (logger.isWarnEnabled) 
+			matchLog((arrs) => { logger.warn(msg, arrs: _*) }, refs)
+	}
+
+	def logError(msg: String, refs: Any*) {
+		if (logger.isErrorEnabled) 
+			matchLog((arrs) => { logger.error(msg, arrs: _*) }, refs)
+	}
+
 }
 
 
@@ -173,45 +206,53 @@ object JsoupUtils {
 
 }
 
-
-
-class HttpBeautifyUtils {
-	import scala.io.Source
+object JavascriptUtils {
 	import org.mozilla.javascript.Context
 	import org.mozilla.javascript.Scriptable
 
-	val ctx = Context.enter
+	def enterContext = Context.enter
 
-	val jsBeautyScop: Scriptable = {
-		val scope = ctx.initStandardObjects()
+	def evaluateString(scope: Scriptable, scripts: String) = {
+		val ctx = Context.enter
+		val newScope = if (null == scope) ctx.initStandardObjects() else scope
+		val res = ctx.evaluateString(newScope, scripts, null, 0, null)
+		(newScope, res.toString)
+	}
+
+	def evaluateString(scripts: String): (Scriptable, String) = evaluateString(
+		null, scripts) 
+	
+}
+
+class HttpBeautifyUtils { }
+object HttpBeautifyUtils extends Logging {
+	import scala.io.Source
+	import org.mozilla.javascript.Scriptable
+
+	private[this] val jsBeautyScop: Scriptable = {
 		val scripts = Source.fromInputStream(classOf[HttpBeautifyUtils]
 			.getResourceAsStream("/js/beautifyjs/beautify.js")).mkString
-		ctx.evaluateString(scope, scripts, null, 0, null)
-		scope
+		JavascriptUtils.evaluateString(scripts)._1
 	}
 
-	val cssBeautyScop: Scriptable = {
-		val scope = ctx.initStandardObjects()
+	private[this] val cssBeautyScop: Scriptable = {
 		val scripts = Source.fromInputStream(classOf[HttpBeautifyUtils]
 			.getResourceAsStream("/js/beautifyjs/beautify-css.js")).mkString
-		ctx.evaluateString(scope, scripts, null, 0, null)
-		scope
+		JavascriptUtils.evaluateString(scripts)._1
 	}
 
-	val htmlBeautyScop: Scriptable = {
-		val scope = ctx.initStandardObjects()
+	private[this] val htmlBeautyScop: Scriptable = {
 		val scripts = Source.fromInputStream(classOf[HttpBeautifyUtils]
 			.getResourceAsStream("/js/beautifyjs/beautify-html.js")).mkString
-		ctx.evaluateString(scope, scripts, null, 0, null)
-		scope
+		JavascriptUtils.evaluateString(scripts)._1
 	}
 
 	def formatJs(str: String) = {
-		val code = str.replaceAll("""\\""","""\\\\""").replaceAll(""""""", """\\"""")
-			.replaceAll("\n", "\\\\n")
-		println(code)
-		println("""js_beautify("%s")""" format code)
-		ctx.evaluateString(jsBeautyScop, """js_beautify("%s")""" format code, null, 0, null)
+		val code = str.replaceAll("""\\""","""\\\\""").replaceAll(
+			""""""", "\\\\\"") .replaceAll("\n", "\\\\n")
+		logger.debug(code)
+		val scripts = """js_beautify("%s")""" format code
+		logger.debug(scripts)
+		JavascriptUtils.evaluateString(jsBeautyScop, scripts)._2;
 	}
-
 }
