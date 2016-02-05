@@ -2,10 +2,15 @@ language: java
 jdk:
   - oraclejdk8
 
-script:
-  - mvn clean compile test-compile resources:resources resources:testResources surefire:test
-
-#指定分支，只有指定的分支提交时才会运行脚本
 branches:
   only:
     - master
+
+before_install:
+  - pip install --user codecov
+
+script:
+  - mvn clean compile test-compile resources:resources resources:testResources surefire:test
+
+after_success:
+  - codecov
