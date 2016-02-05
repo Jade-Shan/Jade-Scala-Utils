@@ -51,7 +51,9 @@ class CrawlerTest extends FunSuite {
 //	}
 
   test("Test-Cralwer") {
+
     case class HotelTask(hotelId: String) extends HttpCrawlerTask
+
     object TestCrawler extends DefaultHttpCrawler { 
       def processTask(httpTask: HttpCrawlerTask) {
         httpTask match {
@@ -62,6 +64,7 @@ class CrawlerTest extends FunSuite {
 
 			def checkTask(task: HttpCrawlerTask): Boolean = true
     }
+
     TestCrawler.start()
 
     TestCrawler ! "Joke"

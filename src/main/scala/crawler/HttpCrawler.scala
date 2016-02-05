@@ -16,6 +16,7 @@ import org.apache.http.message.BasicNameValuePair
 import jadeutils.common.Logging
 
 abstract class HttpCrawlerTask
+
 trait HttpCrawler extends Logging {
 
 	def checkTask(task: HttpCrawlerTask): Boolean
