@@ -7,7 +7,7 @@
 	<groupId>net.jade-dungeon</groupId>
 	<artifactId>jade-scala-utils</artifactId>
 	<packaging>jar</packaging>
-	<version>0.1.8</version>
+	<version>0.1.9-SNAPSHOT</version>
 	<name>jade-scala-utils</name>
 	<url>https://github.com/Jade-Shan/Jade-scala-utils</url>
 
