@@ -2,6 +2,10 @@ language: java
 jdk:
   - oraclejdk8
 
+env:
+  global:
+    - CODECOV_TOKEN=27dc1b6a-208d-4190-9c46-a654a4e99a4f
+
 branches:
   only:
     - master
