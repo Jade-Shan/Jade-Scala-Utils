@@ -14,6 +14,7 @@
 	<properties>
 		<charset.encoding>UTF-8</charset.encoding>
 		<java.version>1.8</java.version>
+		<scala.version.floor>2.11</scala.version.floor>
 		<scala.version>[2.11.0,2.11.7]</scala.version>
 		<scalatest.version>[2.2.0,2.2.5]</scalatest.version>
 		<junit.version>4.10</junit.version>
@@ -86,7 +87,7 @@
 		<!-- for test scope -->
 		<dependency>
 			<groupId>org.scalatest</groupId>
-			<artifactId>scalatest_2.11</artifactId>
+			<artifactId>scalatest_${scala.version.floor}</artifactId>
 			<version>${scalatest.version}</version>
 			<scope>test</scope>
 		</dependency>
@@ -174,6 +175,7 @@
 				<artifactId>scala-maven-plugin</artifactId>
 				<configuration>
 					<scalaVersion>${scala.version}</scalaVersion>
+					<scalaCompatVersion>${scala.version.floor}</scalaCompatVersion>
 					<jvmArgs>
 						<jvmArg>-client</jvmArg>
 						<jvmArg>-Xms64m</jvmArg>
