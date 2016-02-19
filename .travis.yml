@@ -17,4 +17,4 @@ script:
   - mvn clean compile test-compile resources:resources resources:testResources surefire:test
 
 after_success:
-  - codecov
+  - bash <(curl -s https://codecov.io/bash)
