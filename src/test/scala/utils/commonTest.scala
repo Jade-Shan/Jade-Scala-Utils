@@ -173,3 +173,28 @@ object UtilsTest {
 
 	def getLoggerByName(name: String) = LoggerFactory.getLogger(name)
 }
+
+@RunWith(classOf[JUnitRunner])
+class OpenCVTest extends FunSuite with Logging {
+
+	test("test-run-js2") {
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.Scalar;
+
+		logger.info("hello")
+		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+		// System.load("/usr/local/share/OpenCV/java/libopencv_java2411.so");
+		System.out.println("Welcome to OpenCV " + Core.VERSION);
+		val m = new Mat(5, 10, CvType.CV_8UC1, new Scalar(0));
+		System.out.println("OpenCV Mat: " + m);
+		val mr1 = m.row(1);
+		mr1.setTo(new Scalar(1));
+		val mc5 = m.col(5);
+		mc5.setTo(new Scalar(5));
+		System.out.println("OpenCV Mat data:\n" + m.dump());
+
+	}
+
+}
