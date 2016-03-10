@@ -178,15 +178,17 @@ object UtilsTest {
 class OpenCVTest extends FunSuite with Logging {
 
 	test("test-run-js2") {
-import org.opencv.core.Core;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
-import org.opencv.core.Scalar;
+		import org.opencv.core.Core;
+		import org.opencv.core.CvType;
+		import org.opencv.core.Mat;
+		import org.opencv.core.Scalar;
 
 		logger.info("hello")
 		// System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		// System.load("/usr/local/share/OpenCV/java/libopencv_java2411.so");
-		System.load("/usr/local/share/OpenCV/java/libopencv_java310.so");
+		// System.load("/usr/local/share/OpenCV/java/opencv_java310.so");
+		System.load("/usr/local/share/OpenCV/java/lib" + 
+			Core.NATIVE_LIBRARY_NAME + ".so");
 		System.out.println("Welcome to OpenCV " + Core.VERSION);
 		val m = new Mat(5, 10, CvType.CV_8UC1, new Scalar(0));
 		System.out.println("OpenCV Mat: " + m);
