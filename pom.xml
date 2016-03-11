@@ -30,7 +30,7 @@
 		<dependency>
 			<groupId>org.opencv</groupId>
 			<artifactId>opencv</artifactId>
-			<version>2.4.11</version>
+			<version>3.1.0</version>
 		</dependency>
 		<!-- 
 			<classifier>linux-x86_64</classifier>
