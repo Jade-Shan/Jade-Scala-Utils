@@ -195,7 +195,7 @@ class OpenCVTest extends FunSuite with Logging {
 					// System.loadLibrary(Core.NATIVE_LIBRARY_NAME)
 					// System.load("/usr/local/share/OpenCV/java/libopencv_java310.so")
 					System.load("%s%s%s".format(sharelibBasedir, Core.NATIVE_LIBRARY_NAME, sharelibPostfix))
-					logTrace("Welcome to OpenCV " + Core.VERSION)
+					logDebug("Welcome to OpenCV " + Core.VERSION)
 					val m = new Mat(5, 10, CvType.CV_8UC1, new Scalar(0))
 					logDebug("OpenCV Mat: " + m)
 					val mr1 = m.row(1)
