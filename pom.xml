@@ -8,7 +8,7 @@
 	<parent>
 		<groupId>net.jade-dungeon</groupId>
 		<artifactId>jadelibs-java</artifactId>
-		<version>1.0.0-SNAPSHOT</version>
+		<version>1.0.0</version>
 	</parent>
 
 
