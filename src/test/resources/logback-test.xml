@@ -21,16 +21,6 @@
 	<!-- 日志输出                                                             -->
 	<!-- ==================================================================== -->
 
-	<appender name="APD-INFO-CSL" class="ch.qos.logback.core.ConsoleAppender">
-		<filter class="ch.qos.logback.classic.filter.LevelFilter">
-			<level>DEBUG</level><onMatch>DENY</onMatch>
-			<level>TRACE</level><onMatch>DENY</onMatch>
-		</filter>
-		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>${LOGENV} - ${LOG_PTN_INFO}</pattern>
-		</encoder>
-	</appender>
-
 	<appender name="APD-TRACE-CSL" class="ch.qos.logback.core.ConsoleAppender">
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
 			<!--只记录TRACE级别的 
@@ -42,6 +32,25 @@
 		</filter>
 		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
 			<pattern>${LOGENV} - ${LOG_PTN_TRACE}</pattern>
+		</encoder>
+	</appender>
+
+	<appender name="APD-DEBUG-CSL" class="ch.qos.logback.core.ConsoleAppender">
+		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>TRACE</level><onMatch>DENY</onMatch>
+		</filter>
+		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>${LOGENV} - ${LOG_PTN_INFO}</pattern>
+		</encoder>
+	</appender>
+
+	<appender name="APD-INFO-CSL" class="ch.qos.logback.core.ConsoleAppender">
+		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>DEBUG</level><onMatch>DENY</onMatch>
+			<level>TRACE</level><onMatch>DENY</onMatch>
+		</filter>
+		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>${LOGENV} - ${LOG_PTN_INFO}</pattern>
 		</encoder>
 	</appender>
 
@@ -99,8 +108,8 @@
 	<!-- ==================================================================== -->
 
 	<!-- 默认的全局日志级别 -->
-	<root level="INFO">
-		<appender-ref ref="APD-INFO-CSL" />
+	<root level="DEBUG">
+		<appender-ref ref="APD-DEBUG-CSL" />
 		<appender-ref ref="APD-INFO-FILE" />
 	</root>
 
