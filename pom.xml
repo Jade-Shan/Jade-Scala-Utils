@@ -8,11 +8,9 @@
 	<parent>
 		<groupId>net.jade-dungeon</groupId>
 		<artifactId>jadelibs-java</artifactId>
-		<version>1.0.1</version>
+		<version>1.0.2</version>
 	</parent>
 
-
-	<groupId>net.jade-dungeon</groupId>
 	<artifactId>jade-scala-utils</artifactId>
 	<packaging>jar</packaging>
 	<version>0.1.12-SNAPSHOT</version>
