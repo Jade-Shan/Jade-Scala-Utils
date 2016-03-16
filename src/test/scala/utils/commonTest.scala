@@ -174,6 +174,7 @@ object UtilsTest {
 	def getLoggerByName(name: String) = LoggerFactory.getLogger(name)
 }
 
+/* 
 @RunWith(classOf[JUnitRunner])
 class OpenCVTest extends FunSuite with Logging {
 
@@ -228,3 +229,4 @@ class OpenCVTest extends FunSuite with Logging {
 	}
 
 }
+*/

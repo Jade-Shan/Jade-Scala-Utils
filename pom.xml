@@ -8,7 +8,7 @@
 	<parent>
 		<groupId>net.jade-dungeon</groupId>
 		<artifactId>jadelibs-java</artifactId>
-		<version>1.0.0</version>
+		<version>1.0.1</version>
 	</parent>
 
 
@@ -27,10 +27,12 @@
 			<groupId>com.googlecode.ez-vcard</groupId>
 			<artifactId>ez-vcard</artifactId>
 		</dependency>
+		<!-- 
 		<dependency>
 			<groupId>org.opencv</groupId>
 			<artifactId>opencv</artifactId>
 		</dependency>
+				 -->
 		<!-- 
 			<classifier>linux-x86_64</classifier>
 			<scope>system</scope>
@@ -134,7 +136,9 @@
 				<includes>
 					<include>logback.xml</include>
 					<include>mail.properties</include>
+					<!-- 
 					<include>opencv.properties</include>
+							 -->
 					<include>js/**/*.js</include>
 				</includes>
 			</resource>
