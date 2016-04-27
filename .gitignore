@@ -35,3 +35,4 @@ bin/
 
 # config for this proj
 src/test/resources/local.properties
+target/
