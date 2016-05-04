@@ -21,21 +21,21 @@ object Method extends Enumeration {
 	type Method = Value
 
 	/** Match any HTTP method */
-	val ANY     = Value(0, "ANY")
+	val ANY     = Value(127, "ANY")
 	/** Match HTTP method GET */
 	val GET     = Value(1, "GET")
 	/** Match HTTP method POST */
 	val POST    = Value(2, "POST")
 	/** Match HTTP method PUT */
-	val PUT     = Value(3, "PUT")
+	val PUT     = Value(4, "PUT")
 	/** Match HTTP method DELDTE */
-	val DELETE  = Value(4, "DELETE")
+	val DELETE  = Value(8, "DELETE")
 	/** Match HTTP method HEAD */
-	val HEAD    = Value(5, "HEAD")
+	val HEAD    = Value(16, "HEAD")
 	/** Match HTTP method OPTIONS */
-	val OPTIONS = Value(6, "OPTIONS")
+	val OPTIONS = Value(32, "OPTIONS")
 	/** Match HTTP method TRACE */
-	val TRACE   = Value(7, "TRACE")
+	val TRACE   = Value(64, "TRACE")
 }
 
 
