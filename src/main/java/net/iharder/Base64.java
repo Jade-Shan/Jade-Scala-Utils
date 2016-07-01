@@ -1,6 +1,6 @@
 package net.iharder;
 
-/**
+/*
  * <p>
  * Encodes and decodes to and from Base64 notation.
  * </p>
@@ -16,22 +16,22 @@ public class Base64 {
 
 	/* ******** P U B L I C F I E L D S ******** */
 
-	/** No options specified. Value is zero. */
+	/* No options specified. Value is zero. */
 	public final static int NO_OPTIONS = 0;
 
-	/** Specify encoding. */
+	/* Specify encoding. */
 	public final static int ENCODE = 1;
 
-	/** Specify decoding. */
+	/* Specify decoding. */
 	public final static int DECODE = 0;
 
-	/** Specify that data should be gzip-compressed. */
+	/* Specify that data should be gzip-compressed. */
 	public final static int GZIP = 2;
 
-	/** Don't break lines when encoding (violates strict Base64 specification) */
+	/* Don't break lines when encoding (violates strict Base64 specification) */
 	public final static int DONT_BREAK_LINES = 8;
 
-	/**
+	/*
 	 * Encode using Base64-like encoding that is URL- and Filename-safe as
 	 * described in Section 4 of RFC3548: <a
 	 * href="http://www.faqs.org/rfcs/rfc3548.html"
@@ -42,7 +42,7 @@ public class Base64 {
 	 */
 	public final static int URL_SAFE = 16;
 
-	/**
+	/*
 	 * Encode using the special "ordered" dialect of Base64 described here: <a
 	 * href="http://www.faqs.org/qa/rfcc-1940.html">http://www.faqs.org/qa/rfcc-
 	 * 1940.html</a>.
@@ -51,16 +51,16 @@ public class Base64 {
 
 	/* ******** P R I V A T E F I E L D S ******** */
 
-	/** Maximum line length (76) of Base64 output. */
+	/* Maximum line length (76) of Base64 output. */
 	private final static int MAX_LINE_LENGTH = 76;
 
-	/** The equals sign (=) as a byte. */
+	/* The equals sign (=) as a byte. */
 	private final static byte EQUALS_SIGN = (byte) '=';
 
-	/** The new line character (\n) as a byte. */
+	/* The new line character (\n) as a byte. */
 	private final static byte NEW_LINE = (byte) '\n';
 
-	/** Preferred encoding. */
+	/* Preferred encoding. */
 	private final static String PREFERRED_ENCODING = "UTF-8";
 
 	// I think I end up not using the BAD_ENCODING indicator.
@@ -73,7 +73,7 @@ public class Base64 {
 
 	/* ******** S T A N D A R D B A S E 6 4 A L P H A B E T ******** */
 
-	/** The 64 valid Base64 values. */
+	/* The 64 valid Base64 values. */
 	// private final static byte[] ALPHABET;
 	/*
 	 * Host platform me be something funny like EBCDIC, so we hardcode these
@@ -94,7 +94,7 @@ public class Base64 {
 			(byte) '5', (byte) '6', (byte) '7', (byte) '8', (byte) '9',
 			(byte) '+', (byte) '/' };
 
-	/**
+	/*
 	 * Translates a Base64 value to either its 6-bit reconstruction value or a
 	 * negative number indicating some other meaning.
 	 **/
@@ -141,7 +141,7 @@ public class Base64 {
 
 	/* ******** U R L S A F E B A S E 6 4 A L P H A B E T ******** */
 
-	/**
+	/*
 	 * Used in the URL- and Filename-safe dialect described in Section 4 of
 	 * RFC3548: <a
 	 * href="http://www.faqs.org/rfcs/rfc3548.html">http://www.faqs.org
@@ -163,7 +163,7 @@ public class Base64 {
 			(byte) '5', (byte) '6', (byte) '7', (byte) '8', (byte) '9',
 			(byte) '-', (byte) '_' };
 
-	/**
+	/*
 	 * Used in decoding URL- and Filename-safe dialects of Base64.
 	 */
 	private final static byte[] _URL_SAFE_DECODABET = { -9, -9, -9, -9, -9, -9,
@@ -213,7 +213,7 @@ public class Base64 {
 
 	/* ******** O R D E R E D B A S E 6 4 A L P H A B E T ******** */
 
-	/**
+	/*
 	 * I don't get the point of this technique, but it is described here: <a
 	 * href="http://www.faqs.org/qa/rfcc-1940.html">http://www.faqs.org/qa/rfcc-
 	 * 1940.html</a>.
@@ -233,7 +233,7 @@ public class Base64 {
 			(byte) 't', (byte) 'u', (byte) 'v', (byte) 'w', (byte) 'x',
 			(byte) 'y', (byte) 'z' };
 
-	/**
+	/*
 	 * Used in decoding the "ordered" dialect of Base64.
 	 */
 	private final static byte[] _ORDERED_DECODABET = { -9, -9, -9, -9, -9, -9,
@@ -283,7 +283,7 @@ public class Base64 {
 
 	/* ******** D E T E R M I N E W H I C H A L H A B E T ******** */
 
-	/**
+	/*
 	 * Returns one of the _SOMETHING_ALPHABET byte arrays depending on the
 	 * options specified. It's possible, though silly, to specify ORDERED and
 	 * URLSAFE in which case one of them will be picked, though there is no
@@ -299,7 +299,7 @@ public class Base64 {
 
 	} // end getAlphabet
 
-	/**
+	/*
 	 * Returns one of the _SOMETHING_DECODABET byte arrays depending on the
 	 * options specified. It's possible, though silly, to specify ORDERED and
 	 * URL_SAFE in which case one of them will be picked, though there is no
@@ -315,11 +315,11 @@ public class Base64 {
 
 	} // end getAlphabet
 
-	/** Defeats instantiation. */
+	/* Defeats instantiation. */
 	private Base64() {
 	}
 
-	// /**
+	// /*
 	// * Prints command line usage.
 	// *
 	// * @param msg A message to include with usage info.
@@ -332,7 +332,7 @@ public class Base64 {
 
 	/* ******** E N C O D I N G M E T H O D S ******** */
 
-	/**
+	/*
 	 * Encodes up to the first three bytes of array <var>threeBytes</var> and
 	 * returns a four-byte array in Base64 notation. The actual number of
 	 * significant bytes in your array is given by <var>numSigBytes</var>. The
@@ -355,7 +355,7 @@ public class Base64 {
 		return b4;
 	} // end encode3to4
 
-	/**
+	/*
 	 * <p>
 	 * Encodes up to three bytes of the array <var>source</var> and writes the
 	 * resulting four Base64 bytes to <var>destination</var>. The source and
@@ -432,7 +432,7 @@ public class Base64 {
 		} // end switch
 	} // end encode3to4
 
-	/**
+	/*
 	 * Serializes an object and returns the Base64-encoded version of that
 	 * serialized object. If the object cannot be serialized or there is another
 	 * error, the method will return <tt>null</tt>. The object is not
@@ -447,7 +447,7 @@ public class Base64 {
 		return encodeObject(serializableObject, NO_OPTIONS);
 	} // end encodeObject
 
-	/**
+	/*
 	 * Serializes an object and returns the Base64-encoded version of that
 	 * serialized object. If the object cannot be serialized or there is another
 	 * error, the method will return <tt>null</tt>.
@@ -534,7 +534,7 @@ public class Base64 {
 
 	} // end encode
 
-	/**
+	/*
 	 * Encodes a byte array into Base64 notation. Does not GZip-compress data.
 	 *
 	 * @param source
@@ -545,7 +545,7 @@ public class Base64 {
 		return encodeBytes(source, 0, source.length, NO_OPTIONS);
 	} // end encodeBytes
 
-	/**
+	/*
 	 * Encodes a byte array into Base64 notation.
 	 * <p>
 	 * Valid options:
@@ -574,7 +574,7 @@ public class Base64 {
 		return encodeBytes(source, 0, source.length, options);
 	} // end encodeBytes
 
-	/**
+	/*
 	 * Encodes a byte array into Base64 notation. Does not GZip-compress data.
 	 *
 	 * @param source
@@ -589,7 +589,7 @@ public class Base64 {
 		return encodeBytes(source, off, len, NO_OPTIONS);
 	} // end encodeBytes
 
-	/**
+	/*
 	 * Encodes a byte array into Base64 notation.
 	 * <p>
 	 * Valid options:
@@ -712,7 +712,7 @@ public class Base64 {
 
 	/* ******** D E C O D I N G M E T H O D S ******** */
 
-	/**
+	/*
 	 * Decodes four bytes from array <var>source</var> and writes the resulting
 	 * bytes (up to three of them) to <var>destination</var>. The source and
 	 * destination arrays can be manipulated anywhere along their length by
@@ -809,7 +809,7 @@ public class Base64 {
 		}
 	} // end decodeToBytes
 
-	/**
+	/*
 	 * Very low-level access to decoding ASCII characters in the form of a byte
 	 * array. Does not support automatically gunzipping or any other "fancy"
 	 * features.
@@ -869,7 +869,7 @@ public class Base64 {
 		return out;
 	} // end decode
 
-	/**
+	/*
 	 * Decodes data from Base64 notation, automatically detecting
 	 * gzip-compressed data and decompressing it.
 	 *
@@ -882,7 +882,7 @@ public class Base64 {
 		return decode(s, NO_OPTIONS);
 	}
 
-	/**
+	/*
 	 * Decodes data from Base64 notation, automatically detecting
 	 * gzip-compressed data and decompressing it.
 	 *
@@ -955,7 +955,7 @@ public class Base64 {
 		return bytes;
 	} // end decode
 
-	/**
+	/*
 	 * Attempts to decode Base64 data and deserialize a Java Object within.
 	 * Returns <tt>null</tt> if there was an error.
 	 *
@@ -1000,7 +1000,7 @@ public class Base64 {
 		return obj;
 	} // end decodeObject
 
-	/**
+	/*
 	 * Convenience method for encoding data to a file.
 	 *
 	 * @param dataToEncode
@@ -1034,7 +1034,7 @@ public class Base64 {
 		return success;
 	} // end encodeToFile
 
-	/**
+	/*
 	 * Convenience method for decoding data to a file.
 	 *
 	 * @param dataToDecode
@@ -1067,7 +1067,7 @@ public class Base64 {
 		return success;
 	} // end decodeToFile
 
-	/**
+	/*
 	 * Convenience method for reading a base64-encoded file and decoding it.
 	 *
 	 * @param filename
@@ -1121,7 +1121,7 @@ public class Base64 {
 		return decodedData;
 	} // end decodeFromFile
 
-	/**
+	/*
 	 * Convenience method for reading a binary file and base64-encoding it.
 	 *
 	 * @param filename
@@ -1173,7 +1173,7 @@ public class Base64 {
 		return encodedData;
 	} // end encodeFromFile
 
-	/**
+	/*
 	 * Reads <tt>infile</tt> and encodes it to <tt>outfile</tt>.
 	 *
 	 * @param infile
@@ -1201,7 +1201,7 @@ public class Base64 {
 		} // end finally
 	} // end encodeFileToFile
 
-	/**
+	/*
 	 * Reads <tt>infile</tt> and decodes it to <tt>outfile</tt>.
 	 *
 	 * @param infile
@@ -1231,7 +1231,7 @@ public class Base64 {
 
 	/* ******** I N N E R C L A S S I N P U T S T R E A M ******** */
 
-	/**
+	/*
 	 * A {@link Base64.InputStream} will read data from another
 	 * <tt>java.io.InputStream</tt>, given in the constructor, and encode/decode
 	 * to/from Base64 notation on the fly.
@@ -1251,7 +1251,7 @@ public class Base64 {
 		// private byte[] alphabet; // Local copies to avoid extra method calls
 		private byte[] decodabet; // Local copies to avoid extra method calls
 
-		/**
+		/*
 		 * Constructs a {@link Base64.InputStream} in DECODE mode.
 		 *
 		 * @param in
@@ -1262,7 +1262,7 @@ public class Base64 {
 			this(in, DECODE);
 		} // end constructor
 
-		/**
+		/*
 		 * Constructs a {@link Base64.InputStream} in either ENCODE or DECODE
 		 * mode.
 		 * <p>
@@ -1301,7 +1301,7 @@ public class Base64 {
 			this.decodabet = getDecodabet(options);
 		} // end constructor
 
-		/**
+		/*
 		 * Reads enough of the input stream to convert to/from Base64 and
 		 * returns the next byte.
 		 *
@@ -1410,7 +1410,7 @@ public class Base64 {
 			} // end else
 		} // end read
 
-		/**
+		/*
 		 * Calls {@link #read()} repeatedly until the end of stream is reached
 		 * or <var>len</var> bytes are read. Returns number of bytes read into
 		 * array or -1 if end of stream is encountered.
@@ -1448,7 +1448,7 @@ public class Base64 {
 
 	/* ******** I N N E R C L A S S O U T P U T S T R E A M ******** */
 
-	/**
+	/*
 	 * A {@link Base64.OutputStream} will write data to another
 	 * <tt>java.io.OutputStream</tt>, given in the constructor, and
 	 * encode/decode to/from Base64 notation on the fly.
@@ -1469,7 +1469,7 @@ public class Base64 {
 		// private byte[] alphabet; // Local copies to avoid extra method calls
 		private byte[] decodabet; // Local copies to avoid extra method calls
 
-		/**
+		/*
 		 * Constructs a {@link Base64.OutputStream} in ENCODE mode.
 		 *
 		 * @param out
@@ -1481,7 +1481,7 @@ public class Base64 {
 			this(out, ENCODE);
 		} // end constructor
 
-		/**
+		/*
 		 * Constructs a {@link Base64.OutputStream} in either ENCODE or DECODE
 		 * mode.
 		 * <p>
@@ -1521,7 +1521,7 @@ public class Base64 {
 			this.decodabet = getDecodabet(options);
 		} // end constructor
 
-		/**
+		/*
 		 * Writes the byte to the output stream after converting to/from Base64
 		 * notation. When encoding, bytes are buffered three at a time before
 		 * the output stream actually gets a write() call. When decoding, bytes
@@ -1575,7 +1575,7 @@ public class Base64 {
 			} // end else: decoding
 		} // end write
 
-		/**
+		/*
 		 * Calls {@link #write(int)} repeatedly until <var>len</var> bytes are
 		 * written.
 		 *
@@ -1601,7 +1601,7 @@ public class Base64 {
 
 		} // end write
 
-		/**
+		/*
 		 * Method added by PHIL. [Thanks, PHIL. -Rob] This pads the buffer
 		 * without closing the stream.
 		 */
@@ -1619,7 +1619,7 @@ public class Base64 {
 
 		} // end flush
 
-		/**
+		/*
 		 * Flushes and closes (I think, in the superclass) the stream.
 		 *
 		 * @since 1.3
@@ -1636,7 +1636,7 @@ public class Base64 {
 			out = null;
 		} // end close
 
-		/**
+		/*
 		 * Suspends encoding of the stream. May be helpful if you need to embed
 		 * a piece of base640-encoded data in a stream.
 		 *
@@ -1647,7 +1647,7 @@ public class Base64 {
 			this.suspendEncoding = true;
 		} // end suspendEncoding
 
-		/**
+		/*
 		 * Resumes encoding of the stream. May be helpful if you need to embed a
 		 * piece of base640-encoded data in a stream.
 		 *
