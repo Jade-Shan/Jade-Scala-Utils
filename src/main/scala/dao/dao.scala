@@ -95,29 +95,32 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 }
 
 abstract class BaseTransactionService extends Logging {
+	import scala.reflect.runtime.universe.Type
+	import scala.reflect.runtime.universe.typeOf
+	import scala.reflect.runtime.universe.TypeTag
 	import jadeutils.comm.dao.TransNesting.TransNesting
 
 	protected val sessionFactory: DaoSessionFactory
 
 	def withTransaction[T](nesting: TransNesting, iso: Int, 
-		callFunc: => T)(implicit m: Manifest[T]): T = 
+		callFunc: => T)(implicit m: TypeTag[T]): T = 
 	{ warpSession(nesting, iso, callFunc) }
 
 	def withTransaction[T](nesting: TransNesting, callFunc: => T)
-	(implicit m: Manifest[T]): T = 
+	(implicit m: TypeTag[T]): T = 
 	{ warpSession(nesting, sessionFactory.defaultIsolation, callFunc) }
 
 	def withTransaction[T](iso: Int, 
-		callFunc: => T)(implicit m: Manifest[T]): T = 
+		callFunc: => T)(implicit m: TypeTag[T]): T = 
 	{ warpSession(TransNesting.REQUIRED, iso, callFunc) }
 
-	def withTransaction[T](callFunc: => T)(implicit m: Manifest[T]): T = {
+	def withTransaction[T](callFunc: => T)(implicit m: TypeTag[T]): T = {
 		warpSession(TransNesting.REQUIRED, sessionFactory.defaultIsolation, 
 			callFunc)
 	}
 
 	private def warpSession[T](nesting: TransNesting, iso: Int, 
-		callFunc: => T)(implicit m: Manifest[T]): T = 
+		callFunc: => T)(implicit m: TypeTag[T]): T = 
 	{
 		val sess = sessionFactory.currentSession
 		val conn = sess.connection
@@ -144,7 +147,7 @@ abstract class BaseTransactionService extends Logging {
 					conn.rollback()
 					logTrace("Trans rollback: S: {}", sess.id)
 				}
-				(generateDefaultResult(m), e)
+				(generateDefaultResult(typeOf[T]), e)
 			}
 		} finally {
 			conn.setAutoCommit(autoCommitBackup)
@@ -171,17 +174,17 @@ abstract class BaseTransactionService extends Logging {
 //		}
 //	}
 
-	private[this] def generateDefaultResult[T](m: Manifest[T]): Any = {
-		if (m <:< manifest[Byte]) 0
-		else if (m <:< manifest[Short]) 0
-		else if (m <:< manifest[Int]) 0
-		else if (m <:< manifest[Long]) 0L
-		else if (m <:< manifest[Float]) 0F
-		else if (m <:< manifest[Double]) 0
-		else if (m <:< manifest[Char]) '0'
-		else if (m <:< manifest[Boolean]) false
-		else if (m <:< manifest[Unit]) { () }
-		else null
+	private[this] def generateDefaultResult(m: Type): Any = m match {
+			case t if (t <:< typeOf[Byte   ]) => 0
+			case t if (t <:< typeOf[Short  ]) => 0
+			case t if (t <:< typeOf[Int    ]) => 0
+			case t if (t <:< typeOf[Long   ]) => 0L
+			case t if (t <:< typeOf[Float  ]) => 0F
+			case t if (t <:< typeOf[Double ]) => 0
+			case t if (t <:< typeOf[Char   ]) => '0'
+			case t if (t <:< typeOf[Boolean]) => false
+			case t if (t <:< typeOf[Unit   ]) => { () }
+			case _                            => null
 	}
 
 }
