@@ -5,6 +5,11 @@ Jade-scala-utils
 
 my scala utils
 
+TODO
+================
+
+* dao module need transaction nest logic
+
 Change Log
 ================
 
