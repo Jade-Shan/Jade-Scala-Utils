@@ -129,7 +129,7 @@ abstract class BaseTransactionService extends Logging {
 		if (!sess.isInTrans) {
 			sess.isInTrans = true
 			conn.setTransactionIsolation(iso)
-			// dealwithTransNesting(conn, nesting)
+			dealwithTransNesting(conn, nesting)
 			conn.setAutoCommit(false)
 			logTrace("Trans begin: S: {}", sess.id)
 		}
@@ -161,18 +161,19 @@ abstract class BaseTransactionService extends Logging {
 		result._1.asInstanceOf[T]
 	}
 
-//	private[this] def dealwithTransNesting(conn: Connection, nesting: TransNesting) {
-//		nesting match {
-//			case TransNesting.REQUIRED      => {}
-//			case TransNesting.SUPPORTS      => {}
-//			case TransNesting.MANDATORY     => {}
-//			case TransNesting.REQUIRES_NEW  => {}
-//			case TransNesting.NOT_SUPPORTED => {}
-//			case TransNesting.NEVER         => {}
-//			case TransNesting.NESTED        => {}
-//			case _ => logError("Unknow Trans Prop")
-//		}
-//	}
+	private[this] def dealwithTransNesting(conn: Connection, nesting: TransNesting) {
+		// TODO: need do with the transaction stuff
+		nesting match {
+			case TransNesting.REQUIRED      => {}
+			case TransNesting.SUPPORTS      => {}
+			case TransNesting.MANDATORY     => {}
+			case TransNesting.REQUIRES_NEW  => {}
+			case TransNesting.NOT_SUPPORTED => {}
+			case TransNesting.NEVER         => {}
+			case TransNesting.NESTED        => {}
+			case _ => logError("Unknow Trans Prop")
+		}
+	}
 
 	private[this] def generateDefaultResult(m: Type): Any = m match {
 			case t if (t <:< typeOf[Byte   ]) => 0
