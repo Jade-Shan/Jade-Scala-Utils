@@ -1,6 +1,6 @@
 package jadeutils.crawler
 
-import scala.actors.Actor
+// import scala.actors.Actor
 
 
 import org.apache.http.HttpResponse
@@ -53,16 +53,16 @@ trait HttpCrawler extends Logging {
 
 }
 
-abstract class DefaultHttpCrawler extends Actor with HttpCrawler 
-{
-
-	def act() {
-		while (true) {
-			receive {
-				case httpTask: HttpCrawlerTask => processTask(httpTask)
-				case msg => logError("Error Msg Type: {}", msg)
-			}
-		}
-	}
-
-}
+// abstract class DefaultHttpCrawler extends Actor with HttpCrawler 
+// {
+// 
+// 	def act() {
+// 		while (true) {
+// 			receive {
+// 				case httpTask: HttpCrawlerTask => processTask(httpTask)
+// 				case msg => logError("Error Msg Type: {}", msg)
+// 			}
+// 		}
+// 	}
+// 
+// }

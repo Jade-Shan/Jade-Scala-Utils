@@ -39,8 +39,8 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 { 
 	val defaultIsolation: Int
 
-	private[this] val idleSess = new scala.collection.mutable.Stack[DaoSession]
-	private[this] val actSesss = new scala.collection.mutable.HashMap[String, DaoSession]
+	private[this] var idleSess = List[DaoSession]()
+	private[this] var actSesss = Map[String, DaoSession]()
 	private[this] def size() = idleSess.size + actSesss.size
 	private[this] var currSession = new ThreadLocal[DaoSession]
 
@@ -63,7 +63,7 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 			throw new RuntimeException("Db connection Pool filled")
 
 		val sess = nextSession()
-		actSesss.put(sess.id, sess)
+		actSesss = actSesss + (sess.id -> sess)
 		currSession.set(sess)
 
 		logTrace(
@@ -75,7 +75,11 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 	private[this] def nextSession(): DaoSession = {
 		val sess  = if (idleSess.size < 1) {
 			new DaoSession("" + size, createConnection(), this)
-		} else idleSess.pop
+		} else {
+			var first = idleSess.head
+			idleSess = idleSess.tail
+			first
+		}
 
 		if (sess.isBroken) {
 			nextSession()  // drop borken session, find next idle session
@@ -84,8 +88,8 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 
 	def closeSession(sess: DaoSession) {
 		if (actSesss.contains(sess.id)) {
-			actSesss.remove(sess.id)
-			idleSess.push(sess)
+			actSesss = actSesss - sess.id
+			idleSess = sess :: idleSess
 		}
 		logTrace(
 			"after close session: size: {} ----- max: {}\nidle: {}\nactive: {}", 

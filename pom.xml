@@ -8,7 +8,7 @@
 	<parent>
 		<groupId>net.jade-dungeon</groupId>
 		<artifactId>jadelibs-scala</artifactId>
-		<version>1.0.2</version>
+		<version>2.0.0-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>scalautils</artifactId>
@@ -48,7 +48,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.json4s</groupId>
-			<artifactId>json4s-jackson_${scala.version.floor}</artifactId>
+			<artifactId>json4s-jackson_${scala-floor.version}</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.jsoup</groupId>
@@ -85,7 +85,7 @@
 		<!-- for test scope -->
 		<dependency>
 			<groupId>org.scalatest</groupId>
-			<artifactId>scalatest_${scala.version.floor}</artifactId>
+			<artifactId>scalatest_${scala-floor.version}</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
