@@ -12,6 +12,8 @@ import org.junit.runner.RunWith
 
 @RunWith(classOf[JUnitRunner])
 class SqliteDaoTest extends FunSuite with Logging {
+	val dbName = "db-test-01.db"
+	val tableName = "testuser"
 
 	object SqliteDaoSessionFactory extends DaoSessionFactory {
 		val defaultIsolation = java.sql.Connection.TRANSACTION_SERIALIZABLE
@@ -19,7 +21,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 		def createConnection() = {
 			Class.forName("org.sqlite.JDBC")
 			DriverManager.getConnection(
-				"jdbc:sqlite:test.db")
+				"jdbc:sqlite:" + dbName)
 		}
 	}
 
@@ -40,7 +42,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 		def getById(id: String): User = {
 			logTrace("before query")
 			val u = if (null != id) {
-				val prep = conn.prepareStatement("select * from testuser where id = ?;")
+				val prep = conn.prepareStatement("select * from " + tableName + " where id = ?;")
 				prep.setString(1, id);
 				val rs = prep.executeQuery()
 				val rec = if (rs.next) {
@@ -58,7 +60,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 		def insert(model: User)  {
 			logTrace("before insert")
 			if (null != model && null != model.id) {
-				val prep = conn.prepareStatement("insert into testuser values (?, ?);")
+				val prep = conn.prepareStatement("insert into " + tableName + " values (?, ?);")
 
 				prep.setString(1, model.id);
 				prep.setString(2, model.name);
@@ -85,12 +87,12 @@ class SqliteDaoTest extends FunSuite with Logging {
 
 	def testInEnv(opts: (Connection) => Unit) {
 		Class.forName("org.sqlite.JDBC")
-		val conn = DriverManager.getConnection("jdbc:sqlite:test.db")
+		val conn = DriverManager.getConnection("jdbc:sqlite:" + dbName)
 		val stat = conn.createStatement()
-		stat.executeUpdate("drop table if exists testuser;")
-		stat.executeUpdate("create table testuser (id, name);")
+		stat.executeUpdate("drop table if exists " + tableName + ";")
+		stat.executeUpdate("create table " + tableName + " (id, name);")
 		opts(conn)
-		stat.executeUpdate("drop table if exists testuser;")
+		stat.executeUpdate("drop table if exists " + tableName + ";")
 		conn.close();
 	}
 

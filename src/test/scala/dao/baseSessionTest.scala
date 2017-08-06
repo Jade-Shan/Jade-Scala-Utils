@@ -15,7 +15,7 @@ class SessionTest extends FunSuite with Logging {
 		val defaultIsolation = java.sql.Connection.TRANSACTION_SERIALIZABLE
 
 		def createConnection() = DriverManager.getConnection(
-			"jdbc:sqlite:test.db")
+			"jdbc:sqlite:db-test-00.db")
 	}
 
 	class TestBaseService extends BaseTransactionService {
