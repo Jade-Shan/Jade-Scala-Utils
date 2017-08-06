@@ -21,60 +21,30 @@ class BaseConnectionPoolTest extends FunSuite with Logging {
 	props.setProperty("maximumPoolSize", "5");
 	val testPool = new ConnectionPool(props)
 
-	object SqliteDaoSessionFactory extends DaoSessionFactory {
-		val defaultIsolation = java.sql.Connection.TRANSACTION_SERIALIZABLE
-
-		val pool = testPool
-
-		def createConnection(): java.sql.Connection = pool.getConnection()
-	}
-
-	class TestBaseService extends BaseTransactionService {
-		val sessionFactory = SqliteDaoSessionFactory
-	}
-
-	class Employee(val id: Int, val name: String) {
-		override def toString: String = "{%d, %s}".format(id, name)
-	}
-
-	class EmployeeDao(session: DaoSession) extends Dao[Employee, Int] with Logging {
-
-		def getById(id: Int): Employee = {
-			logTrace("before query")
-			val u = if (id > 0) new Employee(id, "TestEmployee" + id)
-			else throw new java.lang.RuntimeException("Exception for Text")
-			logTrace("after query")
-			u
-		}
-
-		def insert(model: Employee)  {
-			logTrace("before insert")
-			if (null == model) 
-				throw new java.lang.RuntimeException("Exception for Text")
-			logTrace("after insert")
-		}
-
-	}
-
-	object EmployeeService extends TestBaseService {
-		private val dao = new EmployeeDao(sessionFactory.currentSession)
-		def getEmployee(id: Int): Employee = dao.getById(id)
-		def insertEmployee(employee: Employee) { dao.insert(employee) }
-	}
-
 	test("Test-DbConnection") {
-		EmployeeService.insertEmployee(new Employee(33, "TestEmployee33"))
-		val u = EmployeeService.getEmployee(33)
-		logInfo("{}", u)
+		logDebug("======== Test Creating session =============")
+		val c1 = testPool.getConnection()
+		val c2 = testPool.getConnection()
+		val c3 = testPool.getConnection()
+		val c4 = testPool.getConnection()
+		val c5 = testPool.getConnection()
+		logDebug("======== Test Closing session =============")
+		c1.close()
+		c2.close()
+		c3.close()
+		c4.close()
+		c5.close()
 	}
 
 	test("Test-Pool-Size") {
 		intercept[java.sql.SQLTransientConnectionException] {
+			logDebug("======== Test Creating session =============")
 			val c1 = testPool.getConnection()
 			val c2 = testPool.getConnection()
 			val c3 = testPool.getConnection()
 			val c4 = testPool.getConnection()
 			val c5 = testPool.getConnection()
+			logDebug("======== pool should fulled =============")
 			val c6 = testPool.getConnection()
 		}
 	}
