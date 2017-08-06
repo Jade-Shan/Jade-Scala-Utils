@@ -18,7 +18,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	object SqliteDaoSessionFactory extends DaoSessionFactory {
 		val defaultIsolation = java.sql.Connection.TRANSACTION_SERIALIZABLE
 
-		def createConnection() = {
+		def createConnection(): java.sql.Connection = {
 			Class.forName("org.sqlite.JDBC")
 			DriverManager.getConnection(
 				"jdbc:sqlite:" + dbName)

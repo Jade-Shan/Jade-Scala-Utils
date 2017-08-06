@@ -46,7 +46,7 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 
 	def this() = this(3, 10, 5)
 
-	def createConnection() : Connection
+	def createConnection() : java.sql.Connection
 
 	def currentSession = if ( currSession.get != null && 
 		!currSession.get.isBroken)

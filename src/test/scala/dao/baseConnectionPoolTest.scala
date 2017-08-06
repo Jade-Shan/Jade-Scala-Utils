@@ -3,6 +3,8 @@ package jadeutils.comm.dao
 import jadeutils.common.Logging
 
 import java.sql.DriverManager
+import java.sql.Connection
+
 import java.util.Properties
 
 import org.scalatest.junit.JUnitRunner
@@ -24,7 +26,7 @@ class BaseConnectionPoolTest extends FunSuite with Logging {
 
 		val pool = testPool
 
-		def createConnection() = pool.getConnection()
+		def createConnection(): java.sql.Connection = pool.getConnection()
 	}
 
 	class TestBaseService extends BaseTransactionService {
