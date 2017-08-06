@@ -11,7 +11,7 @@ import org.junit.runner.RunWith
 @RunWith(classOf[JUnitRunner])
 class SessionTest extends FunSuite with Logging {
 
-	object SqliteDaoSessionFactory extends DaoSessionFactory {
+	object SqliteDaoSessionFactory extends DaoSessionFactory(3, 10, 5) {
 		val defaultIsolation = java.sql.Connection.TRANSACTION_SERIALIZABLE
 
 		def createConnection() = DriverManager.getConnection(

@@ -44,7 +44,7 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 	private[this] def size() = idleSess.size + actSesss.size
 	private[this] var currSession = new ThreadLocal[DaoSession]
 
-	def this() = this(3, 10, 5)
+	def this() = this(20, 50, 20)
 
 	def createConnection() : java.sql.Connection
 
