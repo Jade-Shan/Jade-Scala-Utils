@@ -17,3 +17,4 @@ Change Log
 ----------------
 
 * :bug: In DAO utils change reflect tool from `Manifest[T]` to `TypeTag[T]`
+* :sparkles: add jdbc connection pool
