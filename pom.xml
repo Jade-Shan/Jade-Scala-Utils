@@ -98,7 +98,6 @@
 	</dependencies>
 
 	<build>
-
 		<resources>
 			<resource>
 				<directory>src/main/resources</directory>
@@ -106,16 +105,13 @@
 				<filtering>true</filtering>
 				<includes>
 					<include>logback.xml</include>
-					<include>mail.properties</include>
 					<!-- 
-					<include>opencv.properties</include>
+					<include>mail.properties</include>
 							 -->
 					<include>js/**/*.js</include>
 				</includes>
 			</resource>
 		</resources>
-
 	</build>
-
 
 </project>
