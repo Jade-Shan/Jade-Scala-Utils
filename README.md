@@ -16,5 +16,7 @@ Change Log
 1.0.3-SNAPSHOT
 ----------------
 
+* :arrow_up: jadelibs-java update version v2.0.1
+* :bug: In DAO utils change reflect tool from `Manifest[T]` to `TypeTag[T]`
 * :bug: In DAO utils change reflect tool from `Manifest[T]` to `TypeTag[T]`
 * :sparkles: add jdbc connection pool
