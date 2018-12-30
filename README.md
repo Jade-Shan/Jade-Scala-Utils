@@ -13,7 +13,10 @@ TODO
 Change Log
 ================
 
-1.0.3-SNAPSHOT
+1.0.4-SNAPSHOT
+----------------
+
+1.0.3
 ----------------
 
 * :arrow_up: jadelibs-java update version v2.0.1
