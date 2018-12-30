@@ -4,3 +4,19 @@ Jade-scala-utils
 [![codecov.io](https://codecov.io/github/Jade-Shan/Jade-scala-utils/coverage.svg?branch=master)](https://codecov.io/github/Jade-Shan/Jade-scala-utils?branch=master)
 
 my scala utils
+
+TODO
+================
+
+* dao module need transaction nest logic
+
+Change Log
+================
+
+1.0.3-SNAPSHOT
+----------------
+
+* :arrow_up: jadelibs-java update version v2.0.1
+* :bug: In DAO utils change reflect tool from `Manifest[T]` to `TypeTag[T]`
+* :bug: In DAO utils change reflect tool from `Manifest[T]` to `TypeTag[T]`
+* :sparkles: add jdbc connection pool

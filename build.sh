@@ -21,7 +21,8 @@ do
 			mvn compile test-compile
 			;;
 		t)
-			mvn resources:resources resources:testResources surefire:test -Dtest=CommonTest
+			# mvn resources:resources resources:testResources surefire:test -Dtest=CommonTest
+			mvn resources:resources resources:testResources surefire:test -Dtest=BaseConnectionPoolTest
 			;;
 		a)
 			ctags -R src --exclude=target --exclude=vendor

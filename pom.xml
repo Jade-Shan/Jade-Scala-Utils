@@ -8,12 +8,12 @@
 	<parent>
 		<groupId>net.jade-dungeon</groupId>
 		<artifactId>jadelibs-scala</artifactId>
-		<version>1.0.2</version>
+		<version>2.0.0-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>scalautils</artifactId>
 	<packaging>jar</packaging>
-	<version>1.0.2</version>
+	<version>1.0.3-SNAPSHOT</version>
 	<name>jade-scala-utils</name>
 	<url>https://github.com/Jade-Shan/Jade-scala-utils</url>
 
@@ -43,12 +43,16 @@
 		</dependency>
 				 -->
 		<dependency>
+			<groupId>com.zaxxer</groupId>
+			<artifactId>HikariCP</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>javax.servlet</groupId>
 			<artifactId>javax.servlet-api</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.json4s</groupId>
-			<artifactId>json4s-jackson_${scala.version.floor}</artifactId>
+			<artifactId>json4s-jackson_${scala-floor.version}</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.jsoup</groupId>
@@ -85,7 +89,7 @@
 		<!-- for test scope -->
 		<dependency>
 			<groupId>org.scalatest</groupId>
-			<artifactId>scalatest_${scala.version.floor}</artifactId>
+			<artifactId>scalatest_${scala-floor.version}</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
@@ -94,7 +98,6 @@
 	</dependencies>
 
 	<build>
-
 		<resources>
 			<resource>
 				<directory>src/main/resources</directory>
@@ -102,16 +105,13 @@
 				<filtering>true</filtering>
 				<includes>
 					<include>logback.xml</include>
-					<include>mail.properties</include>
 					<!-- 
-					<include>opencv.properties</include>
+					<include>mail.properties</include>
 							 -->
 					<include>js/**/*.js</include>
 				</includes>
 			</resource>
 		</resources>
-
 	</build>
-
 
 </project>

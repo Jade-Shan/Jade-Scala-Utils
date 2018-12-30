@@ -11,11 +11,11 @@ import org.junit.runner.RunWith
 @RunWith(classOf[JUnitRunner])
 class SessionTest extends FunSuite with Logging {
 
-	object SqliteDaoSessionFactory extends DaoSessionFactory {
+	object SqliteDaoSessionFactory extends DaoSessionFactory(3, 10, 5) {
 		val defaultIsolation = java.sql.Connection.TRANSACTION_SERIALIZABLE
 
 		def createConnection() = DriverManager.getConnection(
-			"jdbc:sqlite:test.db")
+			"jdbc:sqlite:db-test-00.db")
 	}
 
 	class TestBaseService extends BaseTransactionService {
@@ -55,40 +55,40 @@ class SessionTest extends FunSuite with Logging {
 	test("Test-session-pool") {
 		val fc = SqliteDaoSessionFactory
 		logInfo("......................... create new session\n")
-		val c1 = fc.createSession()
-		val c2 = fc.createSession()
-		val c3 = fc.createSession()
-		val c4 = fc.createSession()
-		val c5 = fc.createSession()
-		val c6 = fc.createSession()
+		val s1 = fc.createSession()
+		val s2 = fc.createSession()
+		val s3 = fc.createSession()
+		val s4 = fc.createSession()
+		val s5 = fc.createSession()
+		val s6 = fc.createSession()
 		logInfo("......................... close session\n")
-		c1.close
-		c2.close
-		c3.close
+		s1.close
+		s2.close
+		s3.close
 		logInfo("......................... re-use in pool\n")
-		val c7 = fc.createSession()
-		val c8 = fc.createSession()
-		val c9 = fc.createSession()
+		val s7 = fc.createSession()
+		val s8 = fc.createSession()
+		val s9 = fc.createSession()
 		logInfo("......................... full pool\n")
-		val ca = fc.createSession()
-		val cb = fc.createSession()
-		val cc = fc.createSession()
-		val cd = fc.createSession()
+		val sa = fc.createSession()
+		val sb = fc.createSession()
+		val sc = fc.createSession()
+		val sd = fc.createSession()
 		logInfo("......................... pool overfool\n")
 		intercept[java.lang.Exception] {
 			val ce = fc.createSession()
 		}
 		logInfo("......................... clean up\n")
-		c4.close
-		c5.close
-		c6.close
-		c7.close
-		c8.close
-		c9.close
-		ca.close
-		cb.close
-		cc.close
-		cd.close
+		s4.close
+		s5.close
+		s6.close
+		s7.close
+		s8.close
+		s9.close
+		sa.close
+		sb.close
+		sc.close
+		sd.close
 	}
 
 	test("Test-Trans-get-commit") {

@@ -153,7 +153,7 @@ class BasicDispather(val pattern: RequestPattern, val logic: (DispatherInfo) => 
 	* Servlet dispather request 
 	*/
 trait DispatherServlet extends HttpServlet with Logging {
-	import scala.collection.JavaConversions.mapAsScalaMap
+	import scala.collection.JavaConverters.mapAsScalaMapConverter
 
 	@throws(classOf[IOException])
 	@throws(classOf[ServletException])
@@ -244,7 +244,7 @@ trait DispatherServlet extends HttpServlet with Logging {
 	private[this] def parseParamsFromRequest(request: HttpServletRequest) = {
 		var recs = Map.empty[String, Array[String]]
 		if(null != request.getParameterMap) {
-			val m: scala.collection.Map[String, Array[String]] = request.getParameterMap
+			val m = request.getParameterMap.asScala
 			for ((key, value) <- m) { recs = recs + (key -> value) }
 		}
 		recs
