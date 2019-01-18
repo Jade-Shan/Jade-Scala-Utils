@@ -8,8 +8,8 @@ import com.zaxxer.hikari.util.DriverDataSource;
 
 import jadeutils.common.Logging
 
-class ConnectionPool(val props: Properties) extends Logging 
-{
+class ConnectionPool(val props: Properties) extends Logging {
+
 	val cfg = new HikariConfig(props);
 	val ds = new HikariDataSource(cfg);
 

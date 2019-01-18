@@ -11,7 +11,7 @@ import jadeutils.common.Logging
 // PROPAGATION_REQUIRES_NEW -- 新建事务，如果当前存在事务，把当前事务挂起。
 // PROPAGATION_NOT_SUPPORTED -- 以非事务方式执行操作，如果当前存在事务，就把当前事务挂起。
 // PROPAGATION_NEVER -- 以非事务方式执行，如果当前存在事务，则抛出异常。
-// PROPAGATION_NESTED -- 如果当前存在事务，则在嵌套事务内执行。如果当前没有事务，则进行与PROPAGATION_REQUIRED类似的操作。 
+// PROPAGATION_NESTED -- 如果当前存在事务，则在嵌套事务内执行。如果当前没有事务，则进行与PROPAGATION_REQUIRED类似的操作。
 object TransNesting extends Enumeration {
 	type TransNesting = Value
 	val REQUIRED      = Value(0, "REQUIRED")
@@ -19,8 +19,8 @@ object TransNesting extends Enumeration {
 	val MANDATORY     = Value(2, "MANDATORY")
 	val REQUIRES_NEW  = Value(3, "REQUIRES_NEW")
 	val NOT_SUPPORTED = Value(4, "NOT_SUPPORTED")
-  val NEVER         = Value(5, "NEVER")
-  val NESTED        = Value(6, "NESTED")
+	val NEVER         = Value(5, "NEVER")
+	val NESTED        = Value(6, "NESTED")
 }
 
 class DaoSession(val id: String, val connection: Connection, 
@@ -49,7 +49,7 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 	def createConnection() : java.sql.Connection
 
 	def currentSession = if ( currSession.get != null && 
-		!currSession.get.isBroken)
+		!currSession.get.isBroken) //
 	{
 		currSession.get  
 	} else {
@@ -80,7 +80,6 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 			idleSess = idleSess.tail
 			first
 		}
-
 		if (sess.isBroken) {
 			nextSession()  // drop borken session, find next idle session
 		} else sess
@@ -109,30 +108,30 @@ abstract class BaseTransactionService extends Logging {
 	def withTransaction[T](autoCommit: Boolean = false, 
 		nesting: TransNesting = TransNesting.REQUIRED, 
 		iso: Int = java.sql.Connection.TRANSACTION_SERIALIZABLE)(callFunc: => T)
-	(implicit m: TypeTag[T]): T = 
+	(implicit m: TypeTag[T]): T =  //
 	{ warpSession(autoCommit, nesting, iso, callFunc) }
 
 	def withTransaction[T](nesting: TransNesting, iso: Int)(callFunc: => T)
-		(implicit m: TypeTag[T]): T = 
+		(implicit m: TypeTag[T]): T =  //
 	{ warpSession(false, nesting, iso, callFunc) }
 
 	def withTransaction[T](autoCommit: Boolean, iso: Int)(callFunc: => T)
-		(implicit m: TypeTag[T]): T = 
+		(implicit m: TypeTag[T]): T =  //
 	{ warpSession(autoCommit, TransNesting.REQUIRED, iso, callFunc) }
 
 	def withTransaction[T](autoCommit: Boolean, nesting: TransNesting)
-		(callFunc: => T)(implicit m: TypeTag[T]): T = 
+		(callFunc: => T)(implicit m: TypeTag[T]): T =  //
 	{ warpSession(autoCommit, nesting, sessionFactory.defaultIsolation, callFunc) }
 
 	def withTransaction[T](autoCommit: Boolean)
-		(callFunc: => T)(implicit m: TypeTag[T]): T = 
+		(callFunc: => T)(implicit m: TypeTag[T]): T =  //
 	{ warpSession(autoCommit, TransNesting.REQUIRED, sessionFactory.defaultIsolation, callFunc) }
 
 	def withTransaction[T](nesting: TransNesting)(callFunc: => T)
-		(implicit m: TypeTag[T]): T = 
+		(implicit m: TypeTag[T]): T =  //
 	{ warpSession(false, nesting, sessionFactory.defaultIsolation, callFunc) }
 
-	def withTransaction[T](iso: Int)(callFunc: => T)(implicit m: TypeTag[T]): T = 
+	def withTransaction[T](iso: Int)(callFunc: => T)(implicit m: TypeTag[T]): T =  //
 	{ warpSession(false, TransNesting.REQUIRED, iso, callFunc) }
 
 	def withTransaction[T](callFunc: => T)(implicit m: TypeTag[T]): T = {
@@ -141,7 +140,7 @@ abstract class BaseTransactionService extends Logging {
 	}
 
 	private def warpSession[T](autoCommit: Boolean, nesting: TransNesting, 
-		iso: Int, callFunc: => T)(implicit m: TypeTag[T]): T = 
+		iso: Int, callFunc: => T)(implicit m: TypeTag[T]): T =  //
 	{
 		val sess = sessionFactory.currentSession
 		val conn = sess.connection
