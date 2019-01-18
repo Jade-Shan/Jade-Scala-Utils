@@ -14,88 +14,85 @@ import org.json4s.jackson.JsonMethods.render
 import jadeutils.common.Logging
 
 /**
-	* Abstrict of HTTP method.
-	* Use to Match HTTP request in DispatherServlet.
-	*/
+ * Abstrict of HTTP method.
+ * Use to Match HTTP request in DispatherServlet.
+ */
 object Method extends Enumeration {
 	type Method = Value
 
 	/** Match any HTTP method */
-	val ANY     = Value(127, "ANY")
+	val ANY = Value(127, "ANY")
 	/** Match HTTP method GET */
-	val GET     = Value(1, "GET")
+	val GET = Value(1, "GET")
 	/** Match HTTP method POST */
-	val POST    = Value(2, "POST")
+	val POST = Value(2, "POST")
 	/** Match HTTP method PUT */
-	val PUT     = Value(4, "PUT")
+	val PUT = Value(4, "PUT")
 	/** Match HTTP method DELDTE */
-	val DELETE  = Value(8, "DELETE")
+	val DELETE = Value(8, "DELETE")
 	/** Match HTTP method HEAD */
-	val HEAD    = Value(16, "HEAD")
+	val HEAD = Value(16, "HEAD")
 	/** Match HTTP method OPTIONS */
 	val OPTIONS = Value(32, "OPTIONS")
 	/** Match HTTP method TRACE */
-	val TRACE   = Value(64, "TRACE")
+	val TRACE = Value(64, "TRACE")
 }
 
-
-/** 
-	* Define the pattern of http request
-	*
-	* @see jadeutils.web.Method
-	*
-	* @param method Define special HTTP request method to match.
-	* @param pattern Define special pattern of the HTTP request URL to match
-	*/
+/**
+ * Define the pattern of http request
+ *
+ * @see jadeutils.web.Method
+ *
+ * @param method Define special HTTP request method to match.
+ * @param pattern Define special pattern of the HTTP request URL to match
+ */
 class RequestPattern(method: Method.Method, pattern: String) extends Logging {
 
-	/** 
-		* Define the pattern of http request. Match all kind of HTTP request method.
-		*
-		* @see jadeutils.web.Method
-		*
-		* @param pattern Define special pattern of the HTTP request URL to match
-		*
-		*/
+	/**
+	 * Define the pattern of http request. Match all kind of HTTP request method.
+	 *
+	 * @see jadeutils.web.Method
+	 *
+	 * @param pattern Define special pattern of the HTTP request URL to match
+	 */
 	def this(pattern: String) = this(Method.ANY, pattern)
 
 	/**
-		* Regex for draw param's value in path
-		*/
+	 * Regex for draw param's value in path
+	 */
 	val valuePtn = pattern.replaceAll(RequestPattern.paramPtnStr, "([^/]*)").r
 	/**
-		* Param's name in URL path
-		*/
+	 * Param's name in URL path
+	 */
 	val params = RequestPattern.paramPtn.findAllIn(pattern).toList
 	/**
-		* Param's keys in URL path
-		*/
+	 * Param's keys in URL path
+	 */
 	val keys = for (item <- params if item.length > 3) yield item.substring(
-		2, item.length -1)
+		2, item.length - 1)
 
 	/**
-		* For one income HTTP request, check it is match this patten or not
-		*
-		* @param method Method type of Income HTTP request.
-		* @param path URL Path of Income HTTP request.
-		* @return (isMatchOrNot, MapOfRequestParams)
-		*/
-	def matchPath(method: Method.Method, path: String): 
-		(Boolean, Map[String, String]) = 
+	 * For one income HTTP request, check it is match this patten or not
+	 *
+	 * @param method Method type of Income HTTP request.
+	 * @param path URL Path of Income HTTP request.
+	 * @return (isMatchOrNot, MapOfRequestParams)
+	 */
+	def matchPath(method: Method.Method, path: String): (Boolean, Map[String, String]) =
 	{
 		/* draw all param's value in url */
 		logTrace("match path   :" + path)
 		logTrace("match pattern:" + valuePtn.toString)
 		val m = valuePtn.findAllIn(path)
-		val isMatch = if (Method.ANY == this.method || this.method == method) 
-				m.hasNext else false
+		val isMatch = if (Method.ANY == this.method || this.method == method)
+			m.hasNext else false
 		val values = if (isMatch && m.groupCount > 0) {
 			for (i <- 1 to m.groupCount) yield m group i
 		} else Nil
 		logTrace("param keys : " + keys.toString)
 		logTrace("param value: " + values.toString)
 		/* make param's key-value map */
-		val items = (Map.empty[String, String] /: (keys zip values)) (
+		val items = (Map.empty[String, String] /: (keys zip values))(
 			(a, b) => (a + (b._1 -> b._2)))
 		(isMatch, items)
 	}
@@ -109,29 +106,28 @@ object RequestPattern {
 	private val paramPtn = paramPtnStr.r
 }
 
-
 /**
-	* All information of every servlet need to process.
-	*
-	* @param method HTTP request method of income request
-	* @param request  Instance of HttpServletRequest
-	* @param response Instance of HttpServletRequest
-	* @param params Params in the HTTP request
-	*/ 
-class DispatherInfo(val method: Method.Method, 
-	val request: HttpServletRequest, val response: HttpServletResponse, 
-	val params: Map[String, Array[String]])
+ * All information of every servlet need to process.
+ *
+ * @param method HTTP request method of income request
+ * @param request  Instance of HttpServletRequest
+ * @param response Instance of HttpServletRequest
+ * @param params Params in the HTTP request
+ */
+class DispatherInfo(val method: Method.Method,
+		val request: HttpServletRequest, val response: HttpServletResponse,
+		val params: Map[String, Array[String]])
 
 object DispatherInfo {
 
 	/**
-		* Format the HTTP rquest params for print
-		*/
+	 * Format the HTTP rquest params for print
+	 */
 	def paramsToString(params: Map[String, Array[String]]) = {
 		var recs = "["
 		for ((key, value) <- params) {
 			var str = value.mkString
-			// str = if (str.length == 0) str else str.substring(0, str.length) 
+			// str = if (str.length == 0) str else str.substring(0, str.length)
 			recs = recs + """{%s: "%s"},""".format(key, str)
 		}
 		recs = if (recs.length == 0) recs else recs.substring(0, recs.length - 1)
@@ -140,18 +136,16 @@ object DispatherInfo {
 
 }
 
-
 /**
-	* mapping from 'HTTP request pattern' to 'process logic' 
-	*/
+ * mapping from 'HTTP request pattern' to 'process logic'
+ */
 class BasicDispather(val pattern: RequestPattern, val logic: (DispatherInfo) => Any) {
 	override def toString = "{%s, %s}".format(pattern, logic)
 }
 
-
 /**
-	* Servlet dispather request 
-	*/
+ * Servlet dispather request
+ */
 trait DispatherServlet extends HttpServlet with Logging {
 	import scala.collection.JavaConverters.mapAsScalaMapConverter
 
@@ -192,7 +186,7 @@ trait DispatherServlet extends HttpServlet with Logging {
 
 	@throws(classOf[IOException])
 	@throws(classOf[ServletException])
-	protected[this] def doLogic(method: Method.Method, 
+	protected[this] def doLogic(method: Method.Method,
 		request: HttpServletRequest, response: HttpServletResponse) 
 	{
 		val path = formalizePath(request)
@@ -209,11 +203,11 @@ trait DispatherServlet extends HttpServlet with Logging {
 		val matchRec = matchDispathers(method, path, DispatherServlet.dispathers)
 
 		if (!matchRec._1)
-			response.sendError(404, "Resource not found: " + path )
+			response.sendError(404, "Resource not found: " + path)
 		else {
 			for ((key, value) <- matchRec._3) {
 				if (params.contains(key))
-					params = params + (key ->  Array.concat(params(key), Array(value)))
+					params = params + (key -> Array.concat(params(key), Array(value)))
 				else params = params + (key -> Array(value))
 			}
 			logDebug("all params: " + DispatherInfo.paramsToString(params))
@@ -223,7 +217,7 @@ trait DispatherServlet extends HttpServlet with Logging {
 					request.getRequestDispatcher(newPath).forward(request, response)
 				}
 				case DispatherServlet.Redirect(newPath) => {
-					logDebug("redirect: " + request.getContextPath + newPath) 
+					logDebug("redirect: " + request.getContextPath + newPath)
 					response.sendRedirect(request.getContextPath + newPath)
 				}
 				case json: JValue => {
@@ -243,7 +237,7 @@ trait DispatherServlet extends HttpServlet with Logging {
 
 	private[this] def parseParamsFromRequest(request: HttpServletRequest) = {
 		var recs = Map.empty[String, Array[String]]
-		if(null != request.getParameterMap) {
+		if (null != request.getParameterMap) {
 			val m = request.getParameterMap.asScala
 			for ((key, value) <- m) { recs = recs + (key -> value) }
 		}
@@ -255,7 +249,7 @@ trait DispatherServlet extends HttpServlet with Logging {
 		val ite = request.getHeaderNames
 		while (ite.hasMoreElements) {
 			val key = ite.nextElement
-			var values: List[String] = Nil 
+			var values: List[String] = Nil
 			val vite = request.getHeaders(key)
 			while (vite.hasMoreElements) {
 				values = vite.nextElement :: values
@@ -265,16 +259,15 @@ trait DispatherServlet extends HttpServlet with Logging {
 		recs
 	}
 
-
-	private[this] def matchDispathers( method: Method.Method, path: String, 
-		list: List[BasicDispather]): (Boolean, (DispatherInfo) => Any, Map[String, String]) = 
+	private[this] def matchDispathers(method: Method.Method, path: String,
+		list: List[BasicDispather]): (Boolean, (DispatherInfo) => Any, Map[String, String]) =
 	{
-		if (Nil == list)  {
+		if (Nil == list) {
 			(false, (info) => {}, Map.empty[String, String])
 		} else {
 			val rec = list.head.pattern.matchPath(method, path)
 			if (rec._1) (rec._1, list.head.logic, rec._2)
-				else matchDispathers(method, path, list.tail)
+			else matchDispathers(method, path, list.tail)
 		}
 	}
 
@@ -283,7 +276,7 @@ trait DispatherServlet extends HttpServlet with Logging {
 		val ctxPath = request.getContextPath
 		logDebug("reqUri: " + reqUri);
 		logDebug("ctxPath: " + ctxPath);
-		if ((reqUri.indexOf(ctxPath + "/")) == 0) 
+		if ((reqUri.indexOf(ctxPath + "/")) == 0)
 			reqUri.substring(ctxPath.length) else reqUri
 	}
 
@@ -292,20 +285,20 @@ trait DispatherServlet extends HttpServlet with Logging {
 object DispatherServlet extends Logging {
 
 	/**
-		* As the case of HTTP forward action.
-		*/
+	 * As the case of HTTP forward action.
+	 */
 	case class Foward(url: String)
 
 	/**
-		* As the case of HTTP forward action.
-		*/
+	 * As the case of HTTP forward action.
+	 */
 	case class Redirect(url: String)
 
 	private var dispathers: List[BasicDispather] = Nil
 
 	/**
-		* Add dispather to DispatherServlet
-		*/
+	 * Add dispather to DispatherServlet
+	 */
 	def addDisPather(dispather: BasicDispather) {
 		logDebug("add pattern to dispather list: " + dispather.pattern)
 		dispathers = dispather :: dispathers
@@ -313,55 +306,49 @@ object DispatherServlet extends Logging {
 
 }
 
-
-
 /**
-	* Abstract of MVC controller
-	*/
+ * Abstract of MVC controller
+ */
 trait BasicController {
 
 	/**
-		* This function regist a special HTTP request Pattern to the dispather.
-		*
-		* @see jadeutils.web.Method
-		*
-		* @param method Define special HTTP request Method
-		* @param pattern Define special pattern of the HTTP request URL
-		* @param logic Define what to do when the method and pattern are matched
-		*/
-	def service(method: Method.Method, pattern: String)
-		(logic: (DispatherInfo) => Any) 
-	{
+	 * This function regist a special HTTP request Pattern to the dispather.
+	 *
+	 * @see jadeutils.web.Method
+	 *
+	 * @param method Define special HTTP request Method
+	 * @param pattern Define special pattern of the HTTP request URL
+	 * @param logic Define what to do when the method and pattern are matched
+	 */
+	def service(method: Method.Method, pattern: String)(logic: (DispatherInfo) => Any) {
 		val dpth = new BasicDispather(new RequestPattern(method, pattern), logic)
 		DispatherServlet.addDisPather(dpth)
 	}
 
-
 	/**
-		* <p>This function regist a special HTTP request Pattern to the dispather.</p>
-		* <p>This function can match any HTTP request method</p>
-		*
-		* @see jadeutils.web.Method
-		*
-		* @param pattern Define special pattern of the HTTP request URL
-		* @param logic Define what to do when the method and pattern are matched
-		*/
-	def service(pattern: String) (logic: (DispatherInfo) => Any) {
+	 * <p>This function regist a special HTTP request Pattern to the dispather.</p>
+	 * <p>This function can match any HTTP request method</p>
+	 *
+	 * @see jadeutils.web.Method
+	 *
+	 * @param pattern Define special pattern of the HTTP request URL
+	 * @param logic Define what to do when the method and pattern are matched
+	 */
+	def service(pattern: String)(logic: (DispatherInfo) => Any) {
 		service(Method.ANY, pattern)(logic)
 	}
 
-
 	/**
-		* Decode HTTP Basic auth info
-		*
-		* @param authStr Auth info String encode by Base64
-		* 
-		* @return (isDecodeSuccess, username, password)
-		*/
+	 * Decode HTTP Basic auth info
+	 *
+	 * @param authStr Auth info String encode by Base64
+	 *
+	 * @return (isDecodeSuccess, username, password)
+	 */
 	def decodeHttpBasicAuth(authStr: String): (Boolean, String, String) = {
 		if (authStr.startsWith("Basic ")) {
 			val base64 = authStr.substring(6, authStr.length).trim
-			val arr = new String(java.util.Base64.getDecoder.decode(base64), 
+			val arr = new String(java.util.Base64.getDecoder.decode(base64),
 				"UTF-8").split(":")
 			(true, arr(0), arr(1))
 		} else (false, null, null)
