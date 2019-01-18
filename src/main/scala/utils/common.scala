@@ -6,8 +6,6 @@ import scala.xml.Text
 
 import org.apache.commons.lang.StringUtils.isBlank
 
-import net.iharder.Base64
-
 import org.slf4j.LoggerFactory
 import org.slf4j.Logger
 
@@ -46,56 +44,27 @@ object StrUtils {
 		* Encodes a byte array into a bse64 String.
 		*
 		* @param data The byte arry to encode.
-		* @param offset the offset of the bytearray to begin encoding at.
-		* @param len the length of bytes to encode.
-		* @param lineBreaks True if the encoding should contain line breaks and 
-		*	       false if it should not.
 		* @return A base64 encoded String.
 		*/
-	def encodeBase64(data: Array[Byte], offset: Int, len: Int, 
-		lineBreaks: Boolean): String = {
-		Base64.encodeBytes(data, offset, len, 
-			if (lineBreaks) Base64.NO_OPTIONS else Base64.DONT_BREAK_LINES)
-		}
+	def encodeBase64(data: Array[Byte]): String = //
+		new String(java.util.Base64.getEncoder.encode(data))
 
 	/**
 		* Encodes a byte array into a bse64 String.
 		*
-		* @param data The byte arry to encode.
-		* @param lineBreaks True if the encoding should contain line breaks and 
-		*        false if it should not.
+		* @param str The byte arry to encode.
 		* @return A base64 encoded String.
 		*/
-	def encodeBase64(data: Array[Byte], lineBreaks: Boolean):String = 
-	encodeBase64(data, 0, data.length, lineBreaks)
-
-	/**
-		* Encodes a byte array into a base64 String.
-		*
-		* @param data a byte array to encode.
-		* @return a base64 encode String.
-		*/
-	def encodeBase64(data: Array[Byte]):String = encodeBase64(data, false)
-
+	def encodeBase64(str: String): String = encodeBase64(str.getBytes)
 
 	/**
 		* Decodes a base64 String.
-		* Unlike Base64.decode() this method does not try to detect and decompress 
-		* a gzip-compressed input.
 		*
-		* @param data a base64 encoded String to decode.
+		* @param str a base64 encoded String to decode.
 		* @return the decoded String.
 		*/
-	def decodeBase64(data: String) = {
-		var bytes: Array[Byte] = null
-		try {
-			bytes = data.getBytes("UTF-8");
-		} catch {
-			case e: java.io.UnsupportedEncodingException =>
-			bytes = data.getBytes();
-		}
-		Base64.decode(bytes, 0, bytes.length, Base64.NO_OPTIONS);
-	}
+	def decodeBase64(str: String) = //
+		new String(java.util.Base64.getDecoder.decode(str.getBytes))
 }
 
 object IOUtils {

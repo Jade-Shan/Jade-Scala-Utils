@@ -12,6 +12,7 @@ import org.json4s.jackson.JsonMethods.compact
 import org.json4s.jackson.JsonMethods.render
 
 import jadeutils.common.Logging
+import jadeutils.common.StrUtils
 
 /**
  * Abstrict of HTTP method.
@@ -348,8 +349,7 @@ trait BasicController {
 	def decodeHttpBasicAuth(authStr: String): (Boolean, String, String) = {
 		if (authStr.startsWith("Basic ")) {
 			val base64 = authStr.substring(6, authStr.length).trim
-			val arr = new String(java.util.Base64.getDecoder.decode(base64),
-				"UTF-8").split(":")
+			val arr = StrUtils.decodeBase64(base64).split(":")
 			(true, arr(0), arr(1))
 		} else (false, null, null)
 	}
