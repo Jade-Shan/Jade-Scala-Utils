@@ -25,6 +25,10 @@
 			<groupId>com.googlecode.ez-vcard</groupId>
 			<artifactId>ez-vcard</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.beachape</groupId>
+			<artifactId>enumeratum_${scala-floor.version}</artifactId>
+		</dependency>
 		<!-- 
 		<dependency>
 			<groupId>org.opencv</groupId>

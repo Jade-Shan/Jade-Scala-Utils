@@ -13,6 +13,8 @@ TODO
 Change Log
 ================
 
+* :heavy_plus_sign: add enumeratum for type safe enum
+
 
 1.0.4-SNAPSHOT
 ----------------
