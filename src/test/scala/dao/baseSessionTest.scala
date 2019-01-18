@@ -13,7 +13,7 @@ class SessionTest extends FunSuite with Logging {
 	import jadeutils.comm.dao.TransIso
 
 	object SqliteDaoSessionFactory extends DaoSessionFactory(3, 10, 5) {
-		val defaultIsolation = TransIso.TRANS_SERIALIZABLE
+		val defaultIsolation = TransIso.TS_SERIALIZABLE
 
 		def createConnection() = DriverManager.getConnection(
 			"jdbc:sqlite:db-test-00.db")

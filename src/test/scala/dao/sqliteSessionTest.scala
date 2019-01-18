@@ -18,7 +18,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	val tableName = "testuser"
 
 	object SqliteDaoSessionFactory extends DaoSessionFactory (3, 10, 5) {
-		val defaultIsolation = TransIso.TRANS_SERIALIZABLE
+		val defaultIsolation = TransIso.TS_SERIALIZABLE
 
 		def createConnection(): java.sql.Connection = {
 			Class.forName("org.sqlite.JDBC")

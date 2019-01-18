@@ -12,11 +12,11 @@ sealed abstract class TransIso(val id: Int, val name: String) extends EnumEntry
 object TransIso extends Enum[TransIso] {
   val values = findValues // mandatory due to Enum extension
   val TransIso = findValues // mandatory due to Enum extension
-	case object TRANS_NONE extends TransIso(Connection.TRANSACTION_NONE, "TRANSACTION_NONE")
-	case object TRANS_READ_COMMITTED extends TransIso(Connection.TRANSACTION_READ_COMMITTED, "TRANSACTION_READ_COMMITTED")
-	case object TRANS_READ_UNCOMMITTED extends TransIso(Connection.TRANSACTION_READ_UNCOMMITTED, "TRANSACTION_READ_UNCOMMITTED")
-	case object TRANS_REPEATABLE_READ extends TransIso(Connection.TRANSACTION_REPEATABLE_READ, "TRANSACTION_REPEATABLE_READ")
-	case object TRANS_SERIALIZABLE extends TransIso(Connection.TRANSACTION_SERIALIZABLE, "TRANSACTION_SERIALIZABLE")           
+	case object TS_NONE extends TransIso(Connection.TRANSACTION_NONE, "TRANSACTION_NONE")
+	case object TS_READ_COMMITTED extends TransIso(Connection.TRANSACTION_READ_COMMITTED, "TRANSACTION_READ_COMMITTED")
+	case object TS_READ_UNCOMMITTED extends TransIso(Connection.TRANSACTION_READ_UNCOMMITTED, "TRANSACTION_READ_UNCOMMITTED")
+	case object TS_REPEATABLE_READ extends TransIso(Connection.TRANSACTION_REPEATABLE_READ, "TRANSACTION_REPEATABLE_READ")
+	case object TS_SERIALIZABLE extends TransIso(Connection.TRANSACTION_SERIALIZABLE, "TRANSACTION_SERIALIZABLE")           
 }
 
 
@@ -34,13 +34,13 @@ sealed abstract class TransNesting(val id: Int, val name: String) extends EnumEn
 object TransNesting extends Enum[TransNesting] {
   val values = findValues // mandatory due to Enum extension
   val TransNesting = findValues // mandatory due to Enum extension
-	case object TN_PG_REQUIRED      extends TransNesting(0, "PROPAGATION_REQUIRED")
-	case object TN_PG_SUPPORTS      extends TransNesting(1, "PROPAGATION_SUPPORTS")
-	case object TN_PG_MANDATORY     extends TransNesting(2, "PROPAGATION_MANDATORY")
-	case object TN_PG_REQUIRES_NEW  extends TransNesting(3, "PROPAGATION_REQUIRES_NEW")
-	case object TN_PG_NOT_SUPPORTED extends TransNesting(4, "PROPAGATION_NOT_SUPPORTED")
-	case object TN_PG_NEVER         extends TransNesting(5, "PROPAGATION_NEVER")
-	case object TN_PG_NESTED        extends TransNesting(6, "PROPAGATION_NESTED")
+	case object TS_PG_REQUIRED      extends TransNesting(0, "PROPAGATION_REQUIRED")
+	case object TS_PG_SUPPORTS      extends TransNesting(1, "PROPAGATION_SUPPORTS")
+	case object TS_PG_MANDATORY     extends TransNesting(2, "PROPAGATION_MANDATORY")
+	case object TS_PG_REQUIRES_NEW  extends TransNesting(3, "PROPAGATION_REQUIRES_NEW")
+	case object TS_PG_NOT_SUPPORTED extends TransNesting(4, "PROPAGATION_NOT_SUPPORTED")
+	case object TS_PG_NEVER         extends TransNesting(5, "PROPAGATION_NEVER")
+	case object TS_PG_NESTED        extends TransNesting(6, "PROPAGATION_NESTED")
 }
 
 
@@ -130,8 +130,8 @@ abstract class BaseTransactionService extends Logging {
 	protected val sessionFactory: DaoSessionFactory
 
 	def withTransaction[T](autoCommit: Boolean = false, 
-		nesting: TransNesting = TN_PG_REQUIRED, 
-		iso: TransIso = TRANS_SERIALIZABLE)(callFunc: => T)
+		nesting: TransNesting = TS_PG_REQUIRED, 
+		iso: TransIso = TS_SERIALIZABLE)(callFunc: => T)
 	(implicit m: TypeTag[T]): T =  //
 	{ warpSession(autoCommit, nesting, iso, callFunc) }
 
@@ -141,7 +141,7 @@ abstract class BaseTransactionService extends Logging {
 
 	def withTransaction[T](autoCommit: Boolean, iso: TransIso)(callFunc: => T)
 		(implicit m: TypeTag[T]): T =  //
-	{ warpSession(autoCommit, TN_PG_REQUIRED, iso, callFunc) }
+	{ warpSession(autoCommit, TS_PG_REQUIRED, iso, callFunc) }
 
 	def withTransaction[T](autoCommit: Boolean, nesting: TransNesting)
 		(callFunc: => T)(implicit m: TypeTag[T]): T =  //
@@ -149,17 +149,17 @@ abstract class BaseTransactionService extends Logging {
 
 	def withTransaction[T](autoCommit: Boolean)
 		(callFunc: => T)(implicit m: TypeTag[T]): T =  //
-	{ warpSession(autoCommit, TN_PG_REQUIRED, sessionFactory.defaultIsolation, callFunc) }
+	{ warpSession(autoCommit, TS_PG_REQUIRED, sessionFactory.defaultIsolation, callFunc) }
 
 	def withTransaction[T](nesting: TransNesting)(callFunc: => T)
 		(implicit m: TypeTag[T]): T =  //
 	{ warpSession(false, nesting, sessionFactory.defaultIsolation, callFunc) }
 
 	def withTransaction[T](iso: TransIso)(callFunc: => T)(implicit m: TypeTag[T]): T =  //
-	{ warpSession(false, TN_PG_REQUIRED, iso, callFunc) }
+	{ warpSession(false, TS_PG_REQUIRED, iso, callFunc) }
 
 	def withTransaction[T](callFunc: => T)(implicit m: TypeTag[T]): T = {
-		warpSession(false, TN_PG_REQUIRED, sessionFactory.defaultIsolation, 
+		warpSession(false, TS_PG_REQUIRED, sessionFactory.defaultIsolation, 
 			callFunc)
 	}
 
@@ -208,13 +208,13 @@ abstract class BaseTransactionService extends Logging {
 	private[this] def dealwithTransNesting(conn: Connection, nesting: TransNesting) {
 		// TODO: need do with the transaction stuff
 		nesting match {
-			case TN_PG_REQUIRED      => {}
-			case TN_PG_SUPPORTS      => {}
-			case TN_PG_MANDATORY     => {}
-			case TN_PG_REQUIRES_NEW  => {}
-			case TN_PG_NOT_SUPPORTED => {}
-			case TN_PG_NEVER         => {}
-			case TN_PG_NESTED        => {}
+			case TS_PG_REQUIRED      => {}
+			case TS_PG_SUPPORTS      => {}
+			case TS_PG_MANDATORY     => {}
+			case TS_PG_REQUIRES_NEW  => {}
+			case TS_PG_NOT_SUPPORTED => {}
+			case TS_PG_NEVER         => {}
+			case TS_PG_NESTED        => {}
 			case _ => logError("Unknow Trans Prop")
 		}
 	}
