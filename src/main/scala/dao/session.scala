@@ -12,11 +12,11 @@ sealed abstract class TransIso(val id: Int, val name: String) extends EnumEntry
 object TransIso extends Enum[TransIso] {
   val values = findValues // mandatory due to Enum extension
   val TransIso = findValues // mandatory due to Enum extension
-	case object TS_NONE extends TransIso(Connection.TRANSACTION_NONE, "TRANSACTION_NONE")
-	case object TS_READ_COMMITTED extends TransIso(Connection.TRANSACTION_READ_COMMITTED, "TRANSACTION_READ_COMMITTED")
+	case object TS_NONE             extends TransIso(Connection.TRANSACTION_NONE, "TRANSACTION_NONE")
+	case object TS_READ_COMMITTED   extends TransIso(Connection.TRANSACTION_READ_COMMITTED, "TRANSACTION_READ_COMMITTED")
 	case object TS_READ_UNCOMMITTED extends TransIso(Connection.TRANSACTION_READ_UNCOMMITTED, "TRANSACTION_READ_UNCOMMITTED")
-	case object TS_REPEATABLE_READ extends TransIso(Connection.TRANSACTION_REPEATABLE_READ, "TRANSACTION_REPEATABLE_READ")
-	case object TS_SERIALIZABLE extends TransIso(Connection.TRANSACTION_SERIALIZABLE, "TRANSACTION_SERIALIZABLE")           
+	case object TS_REPEATABLE_READ  extends TransIso(Connection.TRANSACTION_REPEATABLE_READ, "TRANSACTION_REPEATABLE_READ")
+	case object TS_SERIALIZABLE     extends TransIso(Connection.TRANSACTION_SERIALIZABLE, "TRANSACTION_SERIALIZABLE")           
 }
 
 
@@ -48,8 +48,26 @@ object TransNesting extends Enum[TransNesting] {
 class DaoSession(val id: String, val connection: Connection, 
 	factory: DaoSessionFactory) extends Logging 
 {
-	def isBroken = connection.isClosed
-	var isInTrans = false
+	import java.sql.Savepoint
+	
+	private[this] var savepoints: List[Savepoint] = Nil
+
+	def lastSavepoint(): Option[Savepoint] = if (savepoints.isEmpty) None else {
+		Some(savepoints.head)
+	}
+	
+	def pushSavepoint(savepoint: Savepoint) {
+		savepoints = savepoint :: savepoints
+	}
+	
+	def popSavepoint(savepoint: Savepoint) {
+		if(!savepoints.isEmpty && (savepoints.head eq savepoint)) {
+			savepoints = savepoints.tail
+		}
+	}
+
+	def isBroken() = connection.isClosed
+	def isInTrans() = savepoints.isEmpty
 
 	def close() { factory.closeSession(this) }
 
@@ -121,6 +139,8 @@ abstract class DaoSessionFactory(val minPoolSize: Int, val maxPoolSize: Int,
 }
 
 abstract class BaseTransactionService extends Logging {
+	import java.sql.SQLException
+	import java.sql.Savepoint
 	import scala.reflect.runtime.universe.Type
 	import scala.reflect.runtime.universe.typeOf
 	import scala.reflect.runtime.universe.TypeTag
@@ -129,74 +149,62 @@ abstract class BaseTransactionService extends Logging {
 
 	protected val sessionFactory: DaoSessionFactory
 
+	@throws(classOf[SQLException])
 	def withTransaction[T](autoCommit: Boolean = false, 
 		nesting: TransNesting = TS_PG_REQUIRED, 
 		iso: TransIso = TS_SERIALIZABLE)(callFunc: => T)
 	(implicit m: TypeTag[T]): T =  //
 	{ warpSession(autoCommit, nesting, iso, callFunc) }
 
-	def withTransaction[T](nesting: TransNesting, iso: TransIso)(callFunc: => T)
-		(implicit m: TypeTag[T]): T =  //
-	{ warpSession(false, nesting, iso, callFunc) }
-
-	def withTransaction[T](autoCommit: Boolean, iso: TransIso)(callFunc: => T)
-		(implicit m: TypeTag[T]): T =  //
-	{ warpSession(autoCommit, TS_PG_REQUIRED, iso, callFunc) }
-
-	def withTransaction[T](autoCommit: Boolean, nesting: TransNesting)
-		(callFunc: => T)(implicit m: TypeTag[T]): T =  //
-	{ warpSession(autoCommit, nesting, sessionFactory.defaultIsolation, callFunc) }
-
-	def withTransaction[T](autoCommit: Boolean)
-		(callFunc: => T)(implicit m: TypeTag[T]): T =  //
-	{ warpSession(autoCommit, TS_PG_REQUIRED, sessionFactory.defaultIsolation, callFunc) }
-
-	def withTransaction[T](nesting: TransNesting)(callFunc: => T)
-		(implicit m: TypeTag[T]): T =  //
-	{ warpSession(false, nesting, sessionFactory.defaultIsolation, callFunc) }
-
-	def withTransaction[T](iso: TransIso)(callFunc: => T)(implicit m: TypeTag[T]): T =  //
-	{ warpSession(false, TS_PG_REQUIRED, iso, callFunc) }
-
+	@throws(classOf[SQLException])
 	def withTransaction[T](callFunc: => T)(implicit m: TypeTag[T]): T = {
 		warpSession(false, TS_PG_REQUIRED, sessionFactory.defaultIsolation, 
 			callFunc)
 	}
 
+	@throws(classOf[SQLException])
 	private def warpSession[T](autoCommit: Boolean, nesting: TransNesting, 
 		iso: TransIso, callFunc: => T)(implicit m: TypeTag[T]): T =  //
 	{
 		val sess = sessionFactory.currentSession
-		val conn = sess.connection
-		val autoCommitBackup = conn.getAutoCommit
+		val autoCommitBackup = sess.connection.getAutoCommit
 
-		if (!sess.isInTrans) {
-			sess.isInTrans = true
-			conn.setTransactionIsolation(iso.id)
-			dealwithTransNesting(conn, nesting)
-			conn.setAutoCommit(false)
+		val savepoint = dealwithTransNesting(sess, nesting)
+//		if (!sess.isInTrans) {
+		if (null != savepoint._1) {
+//			sess.isInTrans = true
+			sess.connection.setTransactionIsolation(iso.id)
+			sess.connection.setAutoCommit(false)
 			logTrace("Trans begin: S: {}", sess.id)
 		}
 
 		var result = try {
 			var funcResult = callFunc
-			if (sess.isInTrans) {
-				conn.commit()
+//			if (sess.isInTrans) {
+			if (null != savepoint._1) {
+				sess.connection.commit()
 				logTrace("Trans commit: S: {}", sess.id)
 			}
 			(funcResult, null)
 		} catch {
 			case e: RuntimeException => {
 				if (sess.isInTrans) {
-					conn.rollback()
+					if(null != savepoint._1) {
+						sess.connection.rollback(savepoint._1)
+					} else if (null != savepoint._2) {
+						sess.connection.rollback(savepoint._2)
+					} else {
+						sess.connection.rollback()
+					}
 					logTrace("Trans rollback: S: {}", sess.id)
 				}
 				(generateDefaultResult(typeOf[T]), e)
 			}
 		} finally {
-			conn.setAutoCommit(autoCommitBackup)
-			sess.isInTrans = false
-			sess.close
+			sess.connection.setAutoCommit(autoCommitBackup)
+			//			sess.isInTrans = false
+			if (null != savepoint._1) { sess.pushSavepoint(savepoint._1) }
+			if (!sess.isInTrans) { sess.close }
 			logTrace("Trans end: S: {}", sess.id)
 		}
 
@@ -205,17 +213,51 @@ abstract class BaseTransactionService extends Logging {
 		result._1.asInstanceOf[T]
 	}
 
-	private[this] def dealwithTransNesting(conn: Connection, nesting: TransNesting) {
-		// TODO: need do with the transaction stuff
+
+	@throws(classOf[SQLException])
+	private[this] def dealwithTransNesting(sess: DaoSession, nesting: TransNesting): (Savepoint, Savepoint) = {
+		val lastPoint = sess.lastSavepoint().getOrElse(null)
 		nesting match {
-			case TS_PG_REQUIRED      => {}
-			case TS_PG_SUPPORTS      => {}
-			case TS_PG_MANDATORY     => {}
-			case TS_PG_REQUIRES_NEW  => {}
-			case TS_PG_NOT_SUPPORTED => {}
-			case TS_PG_NEVER         => {}
-			case TS_PG_NESTED        => {}
-			case _ => logError("Unknow Trans Prop")
+			// PROPAGATION_NEVER -- 以非事务方式执行，如果当前存在事务，则抛出异常。
+			case TS_PG_NEVER => if (null != lastPoint) {
+				sess.connection.setAutoCommit(true)
+				throw new SQLException("Trans NEVER but in session");
+			} else (null, null)
+			// PROPAGATION_MANDATORY -- 支持当前事务，如果当前没有事务，就抛出异常。
+			case TS_PG_MANDATORY => if (null == lastPoint) {
+				throw new SQLException("Trans MANDATORY but not in session");
+			} else (null, lastPoint)
+			// PROPAGATION_REQUIRED -- 支持当前事务，如果当前没有事务，就新建一个事务。这是最常见的选择。
+			case TS_PG_REQUIRED => if (null != lastPoint) (null, lastPoint) else {
+				val newPoint = sess.connection.setSavepoint("" + System.currentTimeMillis())
+				sess.pushSavepoint(newPoint)
+				(newPoint, null)
+			}
+			// PROPAGATION_SUPPORTS -- 支持当前事务，如果当前没有事务，就以非事务方式执行。
+			case TS_PG_SUPPORTS => if (null != lastPoint) (null, lastPoint) else {
+				sess.connection.setAutoCommit(true)
+				(null, null)
+			}
+			// PROPAGATION_REQUIRES_NEW -- 新建事务，如果当前存在事务，把当前事务挂起。
+			case TS_PG_REQUIRES_NEW => {
+				val newPoint = sess.connection.setSavepoint("" + System.currentTimeMillis())
+//				sess.pushSavepoint(newPoint)
+				(newPoint, null)
+			}
+			// PROPAGATION_NOT_SUPPORTED -- 以非事务方式执行操作，如果当前存在事务，就把当前事务挂起。
+			case TS_PG_NOT_SUPPORTED => {
+				sess.connection.setAutoCommit(true)
+				val newPoint = sess.connection.setSavepoint("" + System.currentTimeMillis())
+//				sess.pushSavepoint(newPoint)
+				(newPoint, null)
+			}
+			// PROPAGATION_NESTED -- 如果当前存在事务，则在嵌套事务内执行。如果当前没有事务，则进行与PROPAGATION_REQUIRED类似的操作。
+			case TS_PG_NESTED => if (null == lastPoint) {
+					val newPoint = sess.connection.setSavepoint("" + System.currentTimeMillis())
+					sess.pushSavepoint(newPoint)
+					(newPoint, null)
+				} else (null, lastPoint)
+			case _ => throw new SQLException("Unknow Trans Prop")
 		}
 	}
 
