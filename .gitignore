@@ -25,6 +25,7 @@ project/plugins/project/
 .scala_dependencies
 .cache-main
 .cache-tests
+.worksheet
 
 # eclipse specific
 .metadata/
