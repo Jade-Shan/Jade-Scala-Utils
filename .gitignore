@@ -4,6 +4,7 @@
 *.war
 *.ear
 *.log
+.worksheet/*
 
 # vim specific
 *.swp
