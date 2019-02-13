@@ -59,4 +59,8 @@ object example {;import org.scalaide.worksheet.runtime.library.WorksheetSupport.
 
 	val arr = Array(1, 2, 3, 3, 3);System.out.println("""arr  : Array[Int] = """ + $show(arr ));$skip(23); val res$8 = 
 	arr.groupBy(identity);System.out.println("""res8: scala.collection.immutable.Map[Int,Array[Int]] = """ + $show(res$8))}
+                                                  
+                                                  
+                                                  
+                                                  
 }

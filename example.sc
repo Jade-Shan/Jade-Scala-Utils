@@ -52,18 +52,26 @@ object example {
 	val fds: Double => String = d => d.toString
                                                   //> fds  : Double => String = example$$$Lambda$14/592179046@737996a0
 
-	SeqF.map(List(1, 2, 3, 4))(fii)
-	SeqF.map(List.empty[Int])(fii)
-	OptionF.map(Some(2))(fii)
-	OptionF.map(Option.empty[Int])(fii)
+	SeqF.map(List(1, 2, 3, 4))(fii)           //> res1: Seq[Int] = List(2, 4, 6, 8)
+	SeqF.map(List.empty[Int])(fii)            //> res2: Seq[Int] = List()
+	OptionF.map(Some(2))(fii)                 //> res3: Option[Int] = Some(4)
+	OptionF.map(Option.empty[Int])(fii)       //> res4: Option[Int] = None
 
-	val fa = FunctionF.map(fid)(fds)
+	val fa = FunctionF.map(fid)(fds)          //> fa  : Int => String = example$FunctionF$2$$anon$1$$Lambda$17/1307096070@3c7
+                                                  //| 56e4d
 	val fb = FunctionF.map[Int, Double, String](fid)(fds)
-	val fc = fds compose fid
-	fa(2)
-	fb(2)
-	fc(2)
+                                                  //> fb  : Int => String = example$FunctionF$2$$anon$1$$Lambda$17/1307096070@7c0
+                                                  //| e2abd
+	val fc = fds compose fid                  //> fc  : Int => String = scala.Function1$$Lambda$18/1223685984@402f32ff
+	fa(2)                                     //> res5: String = 4.2
+	fb(2)                                     //> res6: String = 4.2
+	fc(2)                                     //> res7: String = 4.2
 
-	val arr = Array(1, 2, 3, 3, 3)
-	arr.groupBy(identity)
+	val arr = Array(1, 2, 3, 3, 3)            //> arr  : Array[Int] = Array(1, 2, 3, 3, 3)
+	arr.groupBy(identity)                     //> res8: scala.collection.immutable.Map[Int,Array[Int]] = Map(2 -> Array(2), 1
+                                                  //|  -> Array(1), 3 -> Array(3, 3, 3))
+                                                  
+                                                  
+                                                  
+                                                  
 }
