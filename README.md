@@ -13,13 +13,13 @@ TODO
 Change Log
 ================
 
-* :heavy_plus_sign: add enumeratum for type safe enum
 
-
-1.0.4-SNAPSHOT
+1.0.4
 ----------------
 
 * :arrow_up: jadelibs-scala update version v2.0.2
+
+* :heavy_plus_sign: add enumeratum for type safe enum
 
 
 1.0.3
