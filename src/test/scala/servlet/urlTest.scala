@@ -65,8 +65,8 @@ class UrlTest extends FunSuite with Logging {
 @RunWith(classOf[JUnitRunner])
 class DispatherServletTest extends FunSuite with Logging { 
 
-	import jadeutils.web.mock.MockRequest
-	import jadeutils.web.mock.MockResponse
+	import servlet.MockRequest
+	import servlet.MockResponse
 
 	class Ctl1 extends BasicController {
 		val html = """<html><head><title>%s</title></head><body><h1>Hello! This is %s</h1>%s<br/>%s<br/></body></html>"""

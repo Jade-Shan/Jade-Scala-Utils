@@ -1,9 +1,9 @@
-package jadeutils.web.mock
+package servlet
 
 import java.io.PrintWriter
-
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
+import javax.servlet.http.HttpUpgradeHandler
 
 class MockRequest(requestURI: String) extends HttpServletRequest {
 	import java.util.Vector

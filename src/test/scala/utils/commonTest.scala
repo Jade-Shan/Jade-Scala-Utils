@@ -48,7 +48,6 @@ class ExampleTest extends FunSuite with Logging {
 class CommonTest extends FunSuite {
 
 	import org.apache.commons.lang.StringUtils.isBlank
-	import net.iharder.Base64
 
 	test("Test-isBlank") {
 		assert(isBlank(null))
@@ -67,7 +66,8 @@ class CommonTest extends FunSuite {
 	}
 
 	test("Test-base64") {
-		assert("rO0ABXQAC2hlbGxvIHdvcmxk" == Base64.encodeObject("hello world"))
+		assert("aGVsbG8gd29ybGQ=" == 
+			java.util.Base64.getEncoder.encodeToString("hello world".getBytes()))
 	}
 	
 	/**

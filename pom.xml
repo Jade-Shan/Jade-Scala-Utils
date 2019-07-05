@@ -8,12 +8,12 @@
 	<parent>
 		<groupId>net.jade-dungeon</groupId>
 		<artifactId>jadelibs-scala</artifactId>
-		<version>2.0.1</version>
+		<version>2.0.2</version>
 	</parent>
 
 	<artifactId>scalautils</artifactId>
 	<packaging>jar</packaging>
-	<version>1.0.3</version>
+	<version>1.0.4</version>
 	<name>jade-scala-utils</name>
 	<url>https://github.com/Jade-Shan/Jade-scala-utils</url>
 
@@ -24,6 +24,10 @@
 		<dependency>
 			<groupId>com.googlecode.ez-vcard</groupId>
 			<artifactId>ez-vcard</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.beachape</groupId>
+			<artifactId>enumeratum_${scala-floor.version}</artifactId>
 		</dependency>
 		<!-- 
 		<dependency>
