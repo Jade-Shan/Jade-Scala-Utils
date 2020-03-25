@@ -20,7 +20,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	object SqliteDaoSessionFactory extends DaoSessionFactory (3, 10, 5) {
 		val defaultIsolation = TransIso.TS_SERIALIZABLE
 
-		def createConnection(): java.sql.Connection = {
+		def connectDB(): java.sql.Connection = {
 			Class.forName("org.sqlite.JDBC")
 			DriverManager.getConnection(
 				"jdbc:sqlite:" + dbName)
@@ -39,7 +39,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	extends Dao[User, String] with Logging 
 	{
 		def session() = sessionFactory.currentSession
-		def conn() = session.connection
+		def conn() = session.conn
 
 		def getById(id: String): User = {
 			logTrace("before query")

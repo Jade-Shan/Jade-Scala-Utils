@@ -15,7 +15,7 @@ class SessionTest extends FunSuite with Logging {
 	object SqliteDaoSessionFactory extends DaoSessionFactory(3, 10, 5) {
 		val defaultIsolation = TransIso.TS_SERIALIZABLE
 
-		def createConnection() = DriverManager.getConnection(
+		def connectDB() = DriverManager.getConnection(
 			"jdbc:sqlite:db-test-00.db")
 	}
 
