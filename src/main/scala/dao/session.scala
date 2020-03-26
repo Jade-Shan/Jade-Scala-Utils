@@ -182,7 +182,7 @@ abstract class BaseTransactionService extends Logging {
 
     dealwithTransNesting(sess, nesting)
     val lastTrans = if (sess.lastTransaction().isEmpty) {
-      TransactionEntry(true, null)
+      TransactionEntry(true, Left(new SQLException("not in transaction")))
     } else sess.lastTransaction().get
 
     val isAutoCommit = sess.lastTransaction().get.autoCommit

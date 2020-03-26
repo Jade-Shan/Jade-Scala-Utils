@@ -98,40 +98,63 @@ class SqliteDaoTest extends FunSuite with Logging {
 		conn.close();
 	}
 
-	test("Test-Trans-commit") {
-		testInEnv((conn) => {
-				logInfo("......................... will commit\n")
-				UserService.insertUserList(new User("1", "jade") :: 
-					new User("2", "yun") :: new User("3", "wendy") :: 
-					new User("4", "wen") :: new User("5", "tiantian") :: Nil)
-				val u1 = UserService.getUser("1")
-				val u2 = UserService.getUser("2")
-				val u3 = UserService.getUser("3")
-				val u4 = UserService.getUser("4")
-				val u5 = UserService.getUser("5")
-				assert("1" == u1.id && "jade" == u1.name)
-				assert("2" == u2.id && "yun" == u2.name)
-				assert("3" == u3.id && "wendy" == u3.name)
-				assert("4" == u4.id && "wen" == u4.name)
-				assert("5" == u5.id && "tiantian" == u5.name)
-			})
-	}
+  test("Test-trans-00") {
+    testInEnv((conn) => {
+      logInfo("------------------------test create database\n")
+      val dao = new UserDao(SqliteDaoSessionFactory)
+      val user = new User("1", "jade")
+      conn.setAutoCommit(false)
+      // val savepoint = conn.setSavepoint("" + System.currentTimeMillis())
+      dao.insert(user)
+      conn.commit();
+      // conn.rollback(savepoint)
+      logInfo("--------userid {} is {}", user.id, dao.getById(user.id).name)
+    })
+  }
 
-	test("Test-trans-rollback") {
-		testInEnv((conn) => {
-				logInfo("......................... will rollback\n")
-				intercept[java.lang.Exception] {
-					UserService.insertUserList(new User("1", "jade") :: 
-						new User("2", "yun") :: new User("3", "wendy") :: 
-						new User("4", "wen") :: new User(null, "tiantian") :: Nil)
-				}
 
-				assert(null == UserService.getUser("1"))
-				assert(null == UserService.getUser("2"))
-				assert(null == UserService.getUser("3"))
-				assert(null == UserService.getUser("4"))
-				assert(null == UserService.getUser("5"))
-			})
-	}
+  test("Test-trans-01") {
+    testInEnv((conn) => {
+				logInfo("......................... server trans\n")
+        val user = new User("1", "jade")
+				UserService.insertUser(user)
+    })
+  }
+
+//	test("Test-Trans-commit") {
+//		testInEnv((conn) => {
+//				logInfo("......................... will commit\n")
+//				UserService.insertUserList(new User("1", "jade") :: 
+//					new User("2", "yun") :: new User("3", "wendy") :: 
+//					new User("4", "wen") :: new User("5", "tiantian") :: Nil)
+//				val u1 = UserService.getUser("1")
+//				val u2 = UserService.getUser("2")
+//				val u3 = UserService.getUser("3")
+//				val u4 = UserService.getUser("4")
+//				val u5 = UserService.getUser("5")
+//				assert("1" == u1.id && "jade" == u1.name)
+//				assert("2" == u2.id && "yun" == u2.name)
+//				assert("3" == u3.id && "wendy" == u3.name)
+//				assert("4" == u4.id && "wen" == u4.name)
+//				assert("5" == u5.id && "tiantian" == u5.name)
+//			})
+//	}
+//
+//	test("Test-trans-rollback") {
+//		testInEnv((conn) => {
+//				logInfo("......................... will rollback\n")
+//				intercept[java.lang.Exception] {
+//					UserService.insertUserList(new User("1", "jade") :: 
+//						new User("2", "yun") :: new User("3", "wendy") :: 
+//						new User("4", "wen") :: new User(null, "tiantian") :: Nil)
+//				}
+//
+//				assert(null == UserService.getUser("1"))
+//				assert(null == UserService.getUser("2"))
+//				assert(null == UserService.getUser("3"))
+//				assert(null == UserService.getUser("4"))
+//				assert(null == UserService.getUser("5"))
+//			})
+//	}
 
 }
