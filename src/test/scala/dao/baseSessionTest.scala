@@ -12,7 +12,7 @@ import org.junit.runner.RunWith
 class SessionTest extends FunSuite with Logging {
 	import jadeutils.comm.dao.TransIso
 
-	object SqliteDaoSessionFactory extends DaoSessionFactory(3, 10, 5) {
+	object SqliteDaoSessionFactory extends DaoSessionPool(3, 10, 5) {
 		val defaultIsolation = TransIso.TS_SERIALIZABLE
 
 		def connectDB() = DriverManager.getConnection(
@@ -20,7 +20,7 @@ class SessionTest extends FunSuite with Logging {
 	}
 
 	class TestBaseService extends BaseTransactionService {
-		val sessionFactory = SqliteDaoSessionFactory
+		val daoSessPool = SqliteDaoSessionFactory
 	}
 
 	class User(val id: Int, val name: String) {
@@ -47,7 +47,7 @@ class SessionTest extends FunSuite with Logging {
 	}
 
 	object UserService extends TestBaseService {
-		private val dao = new UserDao(sessionFactory.currentSession)
+		private val dao = new UserDao(daoSessPool.current)
 		def getUser(id: Int): User = withTransaction { dao.getById(id) }
 		def insertUser(user: User) { withTransaction { dao.insert(user) } }
 	}
@@ -56,28 +56,28 @@ class SessionTest extends FunSuite with Logging {
 	test("Test-session-pool") {
 		val fc = SqliteDaoSessionFactory
 		logInfo("......................... create new session\n")
-		val s1 = fc.createSession()
-		val s2 = fc.createSession()
-		val s3 = fc.createSession()
-		val s4 = fc.createSession()
-		val s5 = fc.createSession()
-		val s6 = fc.createSession()
+		val s1 = fc.create()
+		val s2 = fc.create()
+		val s3 = fc.create()
+		val s4 = fc.create()
+		val s5 = fc.create()
+		val s6 = fc.create()
 		logInfo("......................... close session\n")
 		s1.close
 		s2.close
 		s3.close
 		logInfo("......................... re-use in pool\n")
-		val s7 = fc.createSession()
-		val s8 = fc.createSession()
-		val s9 = fc.createSession()
+		val s7 = fc.create()
+		val s8 = fc.create()
+		val s9 = fc.create()
 		logInfo("......................... full pool\n")
-		val sa = fc.createSession()
-		val sb = fc.createSession()
-		val sc = fc.createSession()
-		val sd = fc.createSession()
+		val sa = fc.create()
+		val sb = fc.create()
+		val sc = fc.create()
+		val sd = fc.create()
 		logInfo("......................... pool overfool\n")
 		intercept[java.lang.Exception] {
-			val ce = fc.createSession()
+			val ce = fc.create()
 		}
 		logInfo("......................... clean up\n")
 		s4.close
