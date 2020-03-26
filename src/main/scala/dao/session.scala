@@ -9,6 +9,7 @@ import jadeutils.common.Logging
 
 import enumeratum.EnumEntry
 import enumeratum.Enum
+import java.sql.SQLException
 
 /**
  * 事务隔离级别的抽象
@@ -47,7 +48,7 @@ object TransNesting extends Enum[TransNesting] {
   case object TS_PG_NESTED extends TransNesting(6, "PROPAGATION_NESTED")
 }
 
-case class TransactionEntry(val autoCommit: Boolean, val savepoint: Savepoint)
+case class TransactionEntry(val autoCommit: Boolean, val savepoint: Either[SQLException, Savepoint])
 
 class DaoSession(
   val id: String, val conn: Connection, factory: DaoSessionFactory //
@@ -147,7 +148,6 @@ abstract class DaoSessionFactory( //
 }
 
 abstract class BaseTransactionService extends Logging {
-  import java.sql.SQLException
   import scala.reflect.runtime.universe.Type
   import scala.reflect.runtime.universe.typeOf
   import scala.reflect.runtime.universe.TypeTag
@@ -191,46 +191,49 @@ abstract class BaseTransactionService extends Logging {
     sess.conn.setAutoCommit(isAutoCommit)
     logTrace("Trans begin: S: {}", sess.id)
 
-    var result = try {
+    var result: Either[Throwable, T] = try {
       var funcResult = callFunc
       if (!isAutoCommit) {
         sess.conn.commit()
         logTrace("Trans commit: S: {}", sess.id)
       }
-      (funcResult, null)
+      Right(funcResult)
     } catch {
       case e: RuntimeException => {
         if (!isAutoCommit) {
           val lastTrans = sess.lastTransaction().getOrElse(null)
-          if (null != lastTrans && null != lastTrans.savepoint) {
-            sess.conn.rollback(lastTrans.savepoint)
+          if (null != lastTrans && lastTrans.savepoint.isRight) {
+            sess.conn.rollback(lastTrans.savepoint.right.get)
           } else sess.conn.rollback()
           logTrace("Trans rollback: S: {}", sess.id)
         }
-        (generateDefaultResult(typeOf[T]), e)
+        Left(e)
       }
       case e: Throwable => {
         if (!isAutoCommit) {
           sess.conn.commit()
           logTrace("Trans commit: S: {}", sess.id)
         }
-        (generateDefaultResult(typeOf[T]), e)
+        Left(e)
       }
     } finally {
       sess.popTransaction()
       logTrace("Trans end: S: {}", sess.id)
     }
+    
+    if (result.isLeft) throw result.left.get else {
+      result.right.get.asInstanceOf[T]
+    }
 
-    if (null != result._2) throw result._2
-
-    result._1.asInstanceOf[T]
   }
 
   @throws(classOf[SQLException])
   private[this] def dealwithTransNesting(sess: DaoSession, nesting: TransNesting): Unit = {
-    // sess.conn.setAutoCommit(true)
-    // sess.conn.setAutoCommit(true)
-    def newTransaction() = sess.conn.setSavepoint("" + System.currentTimeMillis())
+    def newTransaction(): Either[SQLException, Savepoint] = try {
+      Right(sess.conn.setSavepoint("" + System.currentTimeMillis()))
+    } catch {
+      case e: SQLException => Left(e)
+    }
     nesting match {
       case TS_PG_NEVER => if (!sess.lastTransaction().isEmpty) {
         // PROPAGATION_NEVER -- 以非事务方式执行，如果当前存在事务，则抛出异常。
