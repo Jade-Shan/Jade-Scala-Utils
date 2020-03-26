@@ -158,21 +158,35 @@ class SqliteDaoTest extends FunSuite with Logging {
 		})
 	}
 
-//	test("Test-trans-rollback") {
-//		testInEnv((conn) => {
-//				logInfo("......................... will rollback\n")
-//				intercept[java.lang.Exception] {
-//					UserService.insertUserList(new User("1", "jade") :: 
-//						new User("2", "yun") :: new User("3", "wendy") :: 
-//						new User("4", "wen") :: new User(null, "tiantian") :: Nil)
-//				}
-//
-//				assert(null == UserService.getUser("1"))
-//				assert(null == UserService.getUser("2"))
-//				assert(null == UserService.getUser("3"))
-//				assert(null == UserService.getUser("4"))
-//				assert(null == UserService.getUser("5"))
-//			})
-//	}
+	test("Test-trans-rollback") {
+		testInEnv((conn) => {
+			logInfo("......................... will rollback\n")
+
+			object UserService extends TestBaseService {
+				private val dao = new UserDao(SqliteDaoSessionPool)
+
+				def getUser(id: String): User = withTransaction { dao.getById(id) }
+
+				def insertUser(user: User) { withTransaction { dao.insert(user) } }
+
+				def insertUserList(userlist: List[User]) {
+					withTransaction {
+						userlist.foreach((user) => { dao.insert(user) })
+					}
+				}
+			}
+			intercept[java.lang.Exception] {
+				UserService.insertUserList(new User("1", "jade") ::
+					new User("2", "yun") :: new User("3", "wendy") ::
+					new User("4", "wen") :: new User(null, "tiantian") :: Nil)
+			}
+
+			assert(null == UserService.getUser("1"))
+			assert(null == UserService.getUser("2"))
+			assert(null == UserService.getUser("3"))
+			assert(null == UserService.getUser("4"))
+			assert(null == UserService.getUser("5"))
+		})
+	}
 
 }
