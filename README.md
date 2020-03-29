@@ -9,6 +9,7 @@ TODO
 ================
 
 * dao module need transaction nest logic
+* Update MySQL JDBC Driver version `8.0.19`
 
 Change Log
 ================

@@ -77,8 +77,9 @@ class SqliteDaoTest extends FunSuite with Logging {
 	}
 
 	def testInEnv(opts: (Connection) => Unit) {
-		Class.forName("org.sqlite.JDBC")
-		val conn = DriverManager.getConnection("jdbc:sqlite:" + dbName)
+//		Class.forName("org.sqlite.JDBC")
+//		val conn = DriverManager.getConnection("jdbc:sqlite:" + dbName)
+		val conn = SqliteDaoSessionPool.current.conn
 		val stat = conn.createStatement()
 		conn.prepareStatement("drop table if exists " + tableName + "").executeUpdate();
 		conn.prepareStatement("create table " + tableName + " (id, name)").executeUpdate();
@@ -95,9 +96,9 @@ class SqliteDaoTest extends FunSuite with Logging {
 			conn.setAutoCommit(false)
 			// val savepoint = conn.setSavepoint("" + System.currentTimeMillis())
 			dao.insert(user)
-			conn.rollback()
+			// conn.rollback()
 			// conn.rollback(savepoint)
-			// conn.commit();
+			 conn.commit();
 			logInfo("--------userid {} is {}", user.id, dao.getById(user.id).name)
 		})
 	}
