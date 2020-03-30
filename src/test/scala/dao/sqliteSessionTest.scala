@@ -77,8 +77,6 @@ class SqliteDaoTest extends FunSuite with Logging {
 	}
 
 	def testInEnv(opts: (Connection) => Unit) {
-//		Class.forName("org.sqlite.JDBC")
-//		val conn = DriverManager.getConnection("jdbc:sqlite:" + dbName)
 		val conn = SqliteDaoSessionPool.current.conn
 		val stat = conn.createStatement()
 		conn.prepareStatement("drop table if exists " + tableName + "").executeUpdate();
@@ -88,106 +86,187 @@ class SqliteDaoTest extends FunSuite with Logging {
 		conn.close();
 	}
 
-	test("Test-trans-00") {
+	test("Test-trans-00-auto-commit") {
 		testInEnv((conn) => {
-			logInfo("------------------------test create database\n")
+			logInfo("------------------------test auto commit\n")
 			val dao = new UserDao(SqliteDaoSessionPool)
 			val user = new User("1", "jade")
-			conn.setAutoCommit(false)
-			// val savepoint = conn.setSavepoint("" + System.currentTimeMillis())
+			conn.setAutoCommit(true)
 			dao.insert(user)
-			// conn.rollback()
-			// conn.rollback(savepoint)
-			 conn.commit();
 			logInfo("--------userid {} is {}", user.id, dao.getById(user.id).name)
 		})
 	}
 
-	test("Test-trans-01") {
+	test("Test-trans-01-manual-commit") {
 		testInEnv((conn) => {
-			logInfo("......................... conn trans\n")
-
-			object UserService extends TestBaseService {
-				private val dao = new UserDao(SqliteDaoSessionPool)
-
-				def getUser(id: String): User = { dao.getById(id) }
-
-				def insertUser(user: User) { 
-					dao.conn().setAutoCommit(false)
-					dao.insert(user) 
-					dao.conn().commit()
-				}
-			}
+			logInfo("------------------------test manual commit\n")
+			val dao = new UserDao(SqliteDaoSessionPool)
 			val user = new User("1", "jade")
-			UserService.insertUser(user)
+			conn.setAutoCommit(false)
+			dao.insert(user)
+			conn.commit();
+			logInfo("--------userid {} is {}", user.id, dao.getById(user.id).name)
 		})
 	}
-
-	test("Test-trans-02") {
+	
+	
+	test("Test-trans-02-rollback-manual") {
 		testInEnv((conn) => {
-			logInfo("......................... will commit\n")
-
-			object UserService extends TestBaseService {
-				private val dao = new UserDao(SqliteDaoSessionPool)
-
-				def getUser(id: String): User = withTransaction { dao.getById(id) }
-
-				def insertUser(user: User) { withTransaction { dao.insert(user) } }
-
-				def insertUserList(userlist: List[User]) {
-					withTransaction {
-						userlist.foreach((user) => { dao.insert(user) })
+			logInfo("------------------------test rollback manual\n")
+			val dao = new UserDao(SqliteDaoSessionPool)
+			conn.setAutoCommit(false)
+			dao.insert(new User("1", "jade"))
+			dao.insert(new User("2", "yun"))
+			dao.insert(new User("3", "wendy"))
+			dao.insert(new User("4", "wen"))
+			dao.insert(new User("5", "tiantian"))
+			assert("jade" == dao.getById("1").name)
+			assert("yun" == dao.getById("2").name)
+			assert("wendy" == dao.getById("3").name)
+			assert("wen" == dao.getById("4").name)
+			assert("tiantian" == dao.getById("5").name)
+			conn.rollback();
+			assert(null == dao.getById("1"))
+			assert(null == dao.getById("2"))
+			assert(null == dao.getById("3"))
+			assert(null == dao.getById("4"))
+			assert(null == dao.getById("5"))
+		})
+	}
+	
+	test("Test-trans-02-rollback-by-exception") {
+		testInEnv((conn) => {
+			logInfo("------------------------test rollback by exception\n")
+			val dao = new UserDao(SqliteDaoSessionPool)
+			conn.setAutoCommit(false)
+			dao.insert(new User("1", "jade"))
+			dao.insert(new User("2", "yun"))
+			dao.insert(new User("3", "wendy"))
+			dao.insert(new User("4", "wen"))
+			assert("jade" == dao.getById("1").name)
+			assert("yun" == dao.getById("2").name)
+			assert("wendy" == dao.getById("3").name)
+			assert("wen" == dao.getById("4").name)
+			intercept[java.lang.RuntimeException] {
+				try {
+					dao.insert(new User(null, "tiantian"))
+				} catch {
+					case e: RuntimeException => if (!conn.getAutoCommit) {
+						conn.rollback();
+						throw e
 					}
 				}
 			}
-			val user = new User("1", "jade")
-			UserService.insertUser(user)
-			val u1 = UserService.getUser("1")
-			assert("1" == u1.id && "jade" == u1.name)
-
-			UserService.insertUserList(new User("2", "yun") ::
-				new User("3", "wendy") :: new User("4", "wen") ::
-				new User("5", "tiantian") :: Nil)
-			val u2 = UserService.getUser("2")
-			val u3 = UserService.getUser("3")
-			val u4 = UserService.getUser("4")
-			val u5 = UserService.getUser("5")
-			assert("2" == u2.id && "yun" == u2.name)
-			assert("3" == u3.id && "wendy" == u3.name)
-			assert("4" == u4.id && "wen" == u4.name)
-			assert("5" == u5.id && "tiantian" == u5.name)
+			conn.commit()
+			assert(null == dao.getById("1"))
+			assert(null == dao.getById("2"))
+			assert(null == dao.getById("3"))
+			assert(null == dao.getById("4"))
+			assert(null == dao.getById("5"))
 		})
 	}
 
-	test("Test-trans-rollback") {
-		testInEnv((conn) => {
-			logInfo("......................... will rollback\n")
 
-			object UserService extends TestBaseService {
-				private val dao = new UserDao(SqliteDaoSessionPool)
+//	test("Test-trans-00-manual-commit") {
+//		testInEnv((conn) => {
+//			logInfo("------------------------test create database\n")
+//			val dao = new UserDao(SqliteDaoSessionPool)
+//			val user = new User("1", "jade")
+//			conn.setAutoCommit(false)
+//			// val savepoint = conn.setSavepoint("" + System.currentTimeMillis())
+//			dao.insert(user)
+//			// conn.rollback()
+//			// conn.rollback(savepoint)
+//			 conn.commit();
+//			logInfo("--------userid {} is {}", user.id, dao.getById(user.id).name)
+//		})
+//	}
 
-				def getUser(id: String): User = withTransaction { dao.getById(id) }
-
-				def insertUser(user: User) { withTransaction { dao.insert(user) } }
-
-				def insertUserList(userlist: List[User]) {
-					withTransaction {
-						userlist.foreach((user) => { dao.insert(user) })
-					}
-				}
-			}
-			intercept[java.lang.Exception] {
-				UserService.insertUserList(new User("1", "jade") ::
-					new User("2", "yun") :: new User("3", "wendy") ::
-					new User("4", "wen") :: new User(null, "tiantian") :: Nil)
-			}
-
-			assert(null == UserService.getUser("1"))
-			assert(null == UserService.getUser("2"))
-			assert(null == UserService.getUser("3"))
-			assert(null == UserService.getUser("4"))
-			assert(null == UserService.getUser("5"))
-		})
-	}
+//	test("Test-trans-01") {
+//		testInEnv((conn) => {
+//			logInfo("......................... conn trans\n")
+//
+//			object UserService extends TestBaseService {
+//				private val dao = new UserDao(SqliteDaoSessionPool)
+//
+//				def getUser(id: String): User = { dao.getById(id) }
+//
+//				def insertUser(user: User) { 
+//					dao.conn().setAutoCommit(false)
+//					dao.insert(user) 
+//					dao.conn().commit()
+//				}
+//			}
+//			val user = new User("1", "jade")
+//			UserService.insertUser(user)
+//		})
+//	}
+//
+//	test("Test-trans-02") {
+//		testInEnv((conn) => {
+//			logInfo("......................... will commit\n")
+//
+//			object UserService extends TestBaseService {
+//				private val dao = new UserDao(SqliteDaoSessionPool)
+//
+//				def getUser(id: String): User = withTransaction { dao.getById(id) }
+//
+//				def insertUser(user: User) { withTransaction { dao.insert(user) } }
+//
+//				def insertUserList(userlist: List[User]) {
+//					withTransaction {
+//						userlist.foreach((user) => { dao.insert(user) })
+//					}
+//				}
+//			}
+//			val user = new User("1", "jade")
+//			UserService.insertUser(user)
+//			val u1 = UserService.getUser("1")
+//			assert("1" == u1.id && "jade" == u1.name)
+//
+//			UserService.insertUserList(new User("2", "yun") ::
+//				new User("3", "wendy") :: new User("4", "wen") ::
+//				new User("5", "tiantian") :: Nil)
+//			val u2 = UserService.getUser("2")
+//			val u3 = UserService.getUser("3")
+//			val u4 = UserService.getUser("4")
+//			val u5 = UserService.getUser("5")
+//			assert("2" == u2.id && "yun" == u2.name)
+//			assert("3" == u3.id && "wendy" == u3.name)
+//			assert("4" == u4.id && "wen" == u4.name)
+//			assert("5" == u5.id && "tiantian" == u5.name)
+//		})
+//	}
+//
+//	test("Test-trans-rollback") {
+//		testInEnv((conn) => {
+//			logInfo("......................... will rollback\n")
+//
+//			object UserService extends TestBaseService {
+//				private val dao = new UserDao(SqliteDaoSessionPool)
+//
+//				def getUser(id: String): User = withTransaction { dao.getById(id) }
+//
+//				def insertUser(user: User) { withTransaction { dao.insert(user) } }
+//
+//				def insertUserList(userlist: List[User]) {
+//					withTransaction {
+//						userlist.foreach((user) => { dao.insert(user) })
+//					}
+//				}
+//			}
+//			intercept[java.lang.Exception] {
+//				UserService.insertUserList(new User("1", "jade") ::
+//					new User("2", "yun") :: new User("3", "wendy") ::
+//					new User("4", "wen") :: new User(null, "tiantian") :: Nil)
+//			}
+//
+//			assert(null == UserService.getUser("1"))
+//			assert(null == UserService.getUser("2"))
+//			assert(null == UserService.getUser("3"))
+//			assert(null == UserService.getUser("4"))
+//			assert(null == UserService.getUser("5"))
+//		})
+//	}
 
 }

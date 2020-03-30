@@ -56,7 +56,7 @@ class DaoSession(//
 {
 
 	private[this] var transStack: List[TransactionEntry] = Nil
-
+	
 	def lastTransaction(): Option[TransactionEntry] = {
 		if (transStack.isEmpty) None else Some(transStack.head)
 	}
@@ -68,12 +68,13 @@ class DaoSession(//
 	def popTransaction(): Option[TransactionEntry] = {
 		val transEntry = lastTransaction()
 		transStack = transStack.tail
+		if (!isInTrans) this.close() // 全部事务完成，关闭会话
 		transEntry
 	}
 
 	def isBroken() = conn.isClosed
 
-	def isInTrans() = transStack.isEmpty
+	def isInTrans() = !transStack.isEmpty
 
 	def close() { pool.close(this) }
 
@@ -135,7 +136,7 @@ abstract class DaoSessionPool( //
 	}
 
 	def close(sess: DaoSession) {
-		if (actvSess.contains(sess.id)) {
+		if (actvSess.contains(sess.id) && actvSess.get(sess.id).isInTrans) {
 			actvSess = actvSess - sess.id
 			idleSess = sess :: idleSess
 		}
