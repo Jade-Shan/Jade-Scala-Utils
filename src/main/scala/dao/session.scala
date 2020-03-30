@@ -139,10 +139,12 @@ abstract class DaoSessionPool( //
 		if (sess.isRight && !sess.right.get.isBroken()) sess else getAvaliable()
 	}
 
+	// TODO: 其实并不是要close，而是return borrow来的connection? 
 	def close(sess: DaoSession) {
 		if (actvSess.contains(sess.id) && !actvSess.get(sess.id).get.isInTransaction()) {
 			actvSess = actvSess - sess.id
 			idleSess = sess :: idleSess
+			currSess.remove()
 		}
 		logTrace("after close session: size: {} ----- max: {}\nidle: {}\nactive: {}",
 			size, maxPoolSize, idleSess, actvSess
