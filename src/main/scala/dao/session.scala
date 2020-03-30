@@ -54,7 +54,6 @@ class DaoSession(//
 	val id: String, val conn: Connection, pool: DaoSessionPool //
 ) extends Logging //
 {
-
 	private[this] var transStack: List[TransactionEntry] = Nil
 	
 	def lastTransaction(): Option[TransactionEntry] = {
@@ -68,13 +67,13 @@ class DaoSession(//
 	def popTransaction(): Option[TransactionEntry] = {
 		val transEntry = lastTransaction()
 		transStack = transStack.tail
-		if (!isInTrans) this.close() // 全部事务完成，关闭会话
+		// TODO: if (!isInTrans) this.close() // 全部事务完成，关闭会话
 		transEntry
 	}
 
 	def isBroken() = conn.isClosed
 
-	def isInTrans() = !transStack.isEmpty
+	def isInTransaction() = !transStack.isEmpty
 
 	def close() { pool.close(this) }
 
@@ -136,7 +135,7 @@ abstract class DaoSessionPool( //
 	}
 
 	def close(sess: DaoSession) {
-		if (actvSess.contains(sess.id) && actvSess.get(sess.id).isInTrans) {
+		if (actvSess.contains(sess.id) && !actvSess.get(sess.id).get.isInTransaction()) {
 			actvSess = actvSess - sess.id
 			idleSess = sess :: idleSess
 		}
@@ -161,8 +160,8 @@ abstract class BaseTransactionService extends Logging {
 		autoCommit: Boolean      = false,             // 不自动提交
 		nesting:    TransNesting = TS_PG_REQUIRED, // 默认加入外层事务
 		iso:         TransIso     = TS_SERIALIZABLE // 默认事务隔离级别为顺序
-	)(callFunc: => T // 事务中的具体操作
-	)(implicit m: TypeTag[T]): T = { // 隐式参数自动匹配被事务包裹函数的返回类型
+	) (callFunc: => T // 事务中的具体操作
+	) (implicit m: TypeTag[T]): T = { // 隐式参数自动匹配被事务包裹函数的返回类型
 		warpSession(autoCommit, nesting, iso, callFunc)
 	}
 
@@ -267,15 +266,15 @@ abstract class BaseTransactionService extends Logging {
 	}
 
 	private[this] def generateDefaultResult(m: Type): Any = m match {
-		case t if (t <:< typeOf[Byte]) => 0
-		case t if (t <:< typeOf[Short]) => 0
-		case t if (t <:< typeOf[Int]) => 0
-		case t if (t <:< typeOf[Long]) => 0L
-		case t if (t <:< typeOf[Float]) => 0F
-		case t if (t <:< typeOf[Double]) => 0
-		case t if (t <:< typeOf[Char]) => '0'
-		case t if (t <:< typeOf[Boolean]) => false
-		case t if (t <:< typeOf[Unit]) => ()
+		case t if (t <:< typeOf[Byte]    ) => 0
+		case t if (t <:< typeOf[Short]   ) => 0
+		case t if (t <:< typeOf[Int]     ) => 0
+		case t if (t <:< typeOf[Long]    ) => 0L
+		case t if (t <:< typeOf[Float]   ) => 0F
+		case t if (t <:< typeOf[Double]  ) => 0
+		case t if (t <:< typeOf[Char]    ) => '0'
+		case t if (t <:< typeOf[Boolean] ) => false
+		case t if (t <:< typeOf[Unit]    ) => ()
 		case _ => null
 	}
 

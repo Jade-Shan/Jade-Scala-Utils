@@ -42,15 +42,15 @@ class MySqlDaoTest extends FunSuite with Logging {
 		def session() = pool.current
 		def conn() = session.conn
 
-		def getById(id: String): User = {
+		def getById(id: String): Either[RuntimeException, User] = {
 			logTrace("before query")
 			val u = if (null != id) {
 				val prep = conn.prepareStatement("select * from " + tableName + " where id = ?;")
 				prep.setString(1, id);
 				val rs = prep.executeQuery()
 				val rec = if (rs.next) {
-					new User(rs.getString("id"), rs.getString("name"))
-				} else null
+					Right(new User(rs.getString("id"), rs.getString("name")))
+				} else Left(new RuntimeException("No such Rec"))
 				logDebug("get user: {}", rec)
 				rs.close
 				session.close
@@ -101,7 +101,7 @@ class MySqlDaoTest extends FunSuite with Logging {
 			// conn.rollback()
 			// conn.rollback(savepoint)
 			if (!conn.getAutoCommit) { conn.commit(); }
-			logInfo("--------userid {} is {}", user.id, dao.getById(user.id).name)
+			logInfo("--------userid {} is {}", user.id, dao.getById(user.id).right.get.name)
 		})
 	}
 
