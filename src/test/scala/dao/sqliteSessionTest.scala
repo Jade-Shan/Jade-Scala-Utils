@@ -20,10 +20,10 @@ class SqliteDaoTest extends FunSuite with Logging {
 	object SqliteDaoSessionPool extends DaoSessionPool (3, 10, 5) {
 		val defaultIsolation = TransIso.TS_SERIALIZABLE
 
-		def connectDB(): java.sql.Connection = {
+		def connectDB() = {
 			Class.forName("org.sqlite.JDBC")
-			DriverManager.getConnection(
-				"jdbc:sqlite:" + dbName)
+			Right(DriverManager.getConnection(
+				"jdbc:sqlite:" + dbName))
 		}
 	}
 
@@ -39,7 +39,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	extends Dao[User, String] with Logging 
 	{
 		def session() = pool.current
-		def conn() = session.conn
+		def conn() = session.right.get.conn
 
 		def getById(id: String): Either[RuntimeException, User] = {
 			logTrace("before query")
@@ -52,7 +52,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 				} else Left(new RuntimeException("No such Rec"))
 				logDebug("get user: {}", rec)
 				rs.close
-				session.close
+				session.right.get.close
 				rec
 			} else throw new RuntimeException("Exception for Text")
 			logTrace("after query")
@@ -69,7 +69,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 				prep.addBatch();
 
 				prep.executeBatch()
-				session.close
+				session.right.get.close
 			} else throw new RuntimeException("Exception for Text")
 			logTrace("after insert")
 		}
@@ -77,7 +77,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	}
 
 	def testInEnv(opts: (Connection) => Unit) {
-		val conn = SqliteDaoSessionPool.current.conn
+		val conn = SqliteDaoSessionPool.current.right.get.conn
 		val stat = conn.createStatement()
 		conn.prepareStatement("drop table if exists " + tableName + "").executeUpdate();
 		conn.prepareStatement("create table " + tableName + " (id, name)").executeUpdate();

@@ -20,11 +20,11 @@ class MySqlDaoTest extends FunSuite with Logging {
 	object MysqlDaoSessionPool extends DaoSessionPool (3, 10, 5) {
 		val defaultIsolation = TransIso.TS_SERIALIZABLE
 
-		def connectDB(): java.sql.Connection = {
+		def connectDB() = {
 			Class.forName("com.mysql.jdbc.Driver")
-			DriverManager.getConnection(
+			Right(DriverManager.getConnection(
 				"jdbc:mysql://localhost:3306/" + dbName +
-				"?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8","devuser","devuser")
+				"?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8","devuser","devuser"))
 		}
 	}
 
@@ -40,7 +40,7 @@ class MySqlDaoTest extends FunSuite with Logging {
 	extends Dao[User, String] with Logging 
 	{
 		def session() = pool.current
-		def conn() = session.conn
+		def conn() = session.right.get.conn
 
 		def getById(id: String): Either[RuntimeException, User] = {
 			logTrace("before query")
@@ -53,7 +53,7 @@ class MySqlDaoTest extends FunSuite with Logging {
 				} else Left(new RuntimeException("No such Rec"))
 				logDebug("get user: {}", rec)
 				rs.close
-				session.close
+				session.right.get.close
 				rec
 			} else throw new RuntimeException("Exception for Text")
 			logTrace("after query")
@@ -70,7 +70,7 @@ class MySqlDaoTest extends FunSuite with Logging {
 				prep.addBatch();
 
 				prep.executeBatch()
-				session.close
+				session.right.get.close
 			} else throw new RuntimeException("Exception for Text")
 			logTrace("after insert")
 		}
@@ -78,7 +78,7 @@ class MySqlDaoTest extends FunSuite with Logging {
 	}
 
 	def testInEnv(opts: (Connection) => Unit) {
-		val conn = MysqlDaoSessionPool.current.conn
+		val conn = MysqlDaoSessionPool.current.right.get.conn
 		
 		val stat = conn.createStatement()
 		conn.prepareStatement("drop table if exists " + tableName + "").executeUpdate();

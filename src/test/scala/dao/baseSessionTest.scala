@@ -15,8 +15,8 @@ class SessionTest extends FunSuite with Logging {
 	object SqliteDaoSessionFactory extends DaoSessionPool(3, 10, 5) {
 		val defaultIsolation = TransIso.TS_SERIALIZABLE
 
-		def connectDB() = DriverManager.getConnection(
-			"jdbc:sqlite:db-test-00.db")
+		def connectDB() = Right(DriverManager.getConnection(
+			"jdbc:sqlite:db-test-00.db"))
 	}
 
 	class TestBaseService extends BaseTransactionService {
@@ -64,9 +64,9 @@ class SessionTest extends FunSuite with Logging {
 		val s5 = fc.create()
 		val s6 = fc.create()
 		logInfo("......................... close session\n")
-		s1.close
-		s2.close
-		s3.close
+		s1.right.get.close
+		s2.right.get.close
+		s3.right.get.close
 		logInfo("......................... re-use in pool\n")
 		val s7 = fc.create()
 		val s8 = fc.create()
@@ -77,20 +77,19 @@ class SessionTest extends FunSuite with Logging {
 		val sc = fc.create()
 		val sd = fc.create()
 		logInfo("......................... pool overfool\n")
-		intercept[java.lang.Exception] {
-			val ce = fc.create()
-		}
+		val ce = fc.create()
+		assert(ce.isLeft && ce.left.get.getMessage == "Db connection Pool filled")
 		logInfo("......................... clean up\n")
-		s4.close
-		s5.close
-		s6.close
-		s7.close
-		s8.close
-		s9.close
-		sa.close
-		sb.close
-		sc.close
-		sd.close
+		s4.right.get.close
+		s5.right.get.close
+		s6.right.get.close
+		s7.right.get.close
+		s8.right.get.close
+		s9.right.get.close
+		sa.right.get.close
+		sb.right.get.close
+		sc.right.get.close
+		sd.right.get.close
 	}
 
 //	test("Test-Trans-get-commit") {

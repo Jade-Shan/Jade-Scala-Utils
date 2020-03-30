@@ -67,7 +67,7 @@ class DaoSession(//
 	def popTransaction(): Option[TransactionEntry] = {
 		val transEntry = lastTransaction()
 		transStack = transStack.tail
-		// TODO: if (!isInTrans) this.close() // 全部事务完成，关闭会话
+		if (!isInTransaction) this.close() // 全部事务完成，关闭会话
 		transEntry
 	}
 
@@ -95,43 +95,48 @@ abstract class DaoSessionPool( //
 	def this() = this(20, 50, 20)
 
 	// 创建JDBC连接
-	def connectDB(): java.sql.Connection
+	def connectDB(): Either[RuntimeException,java.sql.Connection]
 
-	def current = if (currSess.get != null && !currSess.get.isBroken) {
-		// 返回JDBC连接没有断掉的会话
-		currSess.get
-	} else { // 关闭已经断掉的JDBC连接，再创建一个新的
-		if (null != currSess.get)
+	def current: Either[RuntimeException, DaoSession] = {
+		var s = currSess.get
+		if (null == s) create else if (s.isBroken()) {
 			currSess.get.close
-		create()
+			create()
+		} else Right(s)
 	}
 
-	def create(): DaoSession = {
-		if (size >= maxPoolSize)
-			throw new RuntimeException("Db connection Pool filled")
+	def create(): Either[RuntimeException, DaoSession] = {
+		if (size >= maxPoolSize) {
+			Left(new RuntimeException("Db connection Pool filled"))
+		} else {
+			val pse = getAvaliable() // 取一个可用的连接
+			if (pse.isLeft) pse else {
+				val sess = pse.right.get
+				actvSess = actvSess + (sess.id -> sess)
+				currSess.set(sess)
 
-		val sess = getAvaliable() // 取一个可用的连接
-		actvSess = actvSess + (sess.id -> sess)
-		currSess.set(sess)
-
-		logTrace("after create session: size: {} ----- max: {}\nidle: {}\nactive: {}",
-			size, maxPoolSize, idleSess, actvSess
-		)
-		sess
+				logTrace("after create session: size: {} ----- max: {}\nidle: {}\nactive: {}",
+				size, maxPoolSize, idleSess, actvSess
+				)
+				Right(sess)
+			}
+		}
 	}
 
-	private[this] def getAvaliable(): DaoSession = {
+	private[this] def getAvaliable(): Either[RuntimeException, DaoSession] = {
 		val sess = if (idleSess.size < 1) {
 			// 没有空闲的连接就新建一个
-			new DaoSession("" + size, connectDB(), this)
+			val dbConn = connectDB()
+			if (dbConn.isLeft) Left(dbConn.left.get)
+			else Right(new DaoSession("" + size, dbConn.right.get, this))
 		} else {
 			// 有空闲的连接就取一个
 			var first = idleSess.head
 			idleSess = idleSess.tail
-			first
+			Right(first)
 		}
 		// drop borken session, find next idle session
-		if (sess.isBroken) getAvaliable() else sess
+		if (sess.isRight && !sess.right.get.isBroken()) sess else getAvaliable()
 	}
 
 	def close(sess: DaoSession) {
@@ -173,50 +178,52 @@ abstract class BaseTransactionService extends Logging {
 	@throws(classOf[SQLException])
 	private def warpSession[T]( //
 		autoCommit: Boolean, nesting: TransNesting, iso: TransIso, callFunc: => T //
-	)(implicit m: TypeTag[T]): T = {
-		val sess = daoSessPool.current
-
-		dealwithTransNesting(sess, nesting)
-		val lastTrans = if (sess.lastTransaction().isEmpty) {
-			TransactionEntry(true, Left(new SQLException("not in transaction")))
-		} else sess.lastTransaction().get
-
-		val isAutoCommit = sess.lastTransaction().get.autoCommit
-
-		sess.conn.setTransactionIsolation(iso.id)
-		sess.conn.setAutoCommit(isAutoCommit)
-		logTrace("Trans begin: S: {}", sess.id)
-
-		var result: Either[Throwable, T] = try {
-			var funcResult = callFunc
-			if (!isAutoCommit) {
-				sess.conn.commit()
-				logTrace("Trans commit: S: {}", sess.id)
-			}
+	) (implicit m: TypeTag[T]): T = {
+//		val sess = daoSessPool.current
+//
+//		dealwithTransNesting(sess, nesting)
+//		val lastTrans = if (sess.lastTransaction().isEmpty) {
+//			TransactionEntry(true, Left(new SQLException("not in transaction")))
+//		} else sess.lastTransaction().get
+//
+//		val isAutoCommit = sess.lastTransaction().get.autoCommit
+//
+//		sess.conn.setTransactionIsolation(iso.id)
+//		sess.conn.setAutoCommit(isAutoCommit)
+//		logTrace("Trans begin: S: {}", sess.id)
+//
+		var result: Either[Throwable, T] = 
+//		try 
+		{
+			val funcResult = callFunc
+//			if (!isAutoCommit) {
+//				sess.conn.commit()
+//				logTrace("Trans commit: S: {}", sess.id)
+//			}
 			Right(funcResult)
-		} catch {
-			case e: RuntimeException => {
-				if (!isAutoCommit) {
-					val lastTrans = sess.lastTransaction().getOrElse(null)
-					if (null != lastTrans && lastTrans.savepoint.isRight) {
-						sess.conn.rollback(lastTrans.savepoint.right.get)
-					} else sess.conn.rollback()
-					logTrace("Trans rollback: S: {}", sess.id)
-				}
-				Left(e)
-			}
-			case e: Throwable => {
-				if (!isAutoCommit) {
-					sess.conn.commit()
-					logTrace("Trans commit: S: {}", sess.id)
-				}
-				Left(e)
-			}
-		} finally {
-			sess.popTransaction()
-			logTrace("Trans end: S: {}", sess.id)
+//		} catch {
+//			case e: RuntimeException => {
+//				if (!isAutoCommit) {
+//					val lastTrans = sess.lastTransaction().getOrElse(null)
+//					if (null != lastTrans && lastTrans.savepoint.isRight) {
+//						sess.conn.rollback(lastTrans.savepoint.right.get)
+//					} else sess.conn.rollback()
+//					logTrace("Trans rollback: S: {}", sess.id)
+//				}
+//				Left(e)
+//			}
+//			case e: Throwable => {
+//				if (!isAutoCommit) {
+//					sess.conn.commit()
+//					logTrace("Trans commit: S: {}", sess.id)
+//				}
+//				Left(e)
+//			}
+//		} finally {
+//			sess.popTransaction()
+//			logTrace("Trans end: S: {}", sess.id)
 		}
-
+//
 		if (result.isLeft) throw result.left.get else {
 			result.right.get.asInstanceOf[T]
 		}
