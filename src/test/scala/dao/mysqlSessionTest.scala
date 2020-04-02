@@ -89,21 +89,118 @@ class MySqlDaoTest extends FunSuite with Logging {
 		conn.prepareStatement("drop table if exists " + tableName + "").executeUpdate();
 		conn.close();
 	}
-
-	test("Test-trans-00") {
+	
+	test("Test-trans-00-auto-commit") {
 		testInEnv((conn) => {
-			logInfo("------------------------test create database\n")
+			logInfo("------------------------test auto commit\n")
+			val dao = new UserDao(MysqlDaoSessionPool)
+			val user = new User("1", "jade")
+			conn.setAutoCommit(true)
+			dao.insert(user)
+			logInfo("--------userid {} is {}", user.id, dao.getById(user.id).right.get.name)
+		})
+	}
+	
+	test("Test-trans-01-manual-commit") {
+		testInEnv((conn) => {
+			logInfo("------------------------test manual commit\n")
 			val dao = new UserDao(MysqlDaoSessionPool)
 			val user = new User("1", "jade")
 			conn.setAutoCommit(false)
 			val savepoint = conn.setSavepoint("" + System.currentTimeMillis())
 			dao.insert(user)
-			// conn.rollback()
-			// conn.rollback(savepoint)
 			if (!conn.getAutoCommit) { conn.commit(); }
 			logInfo("--------userid {} is {}", user.id, dao.getById(user.id).right.get.name)
 		})
 	}
+
+	test("Test-trans-02-rollback-manual") {
+		testInEnv((conn) => {
+			logInfo("------------------------test create database\n")
+			val dao = new UserDao(MysqlDaoSessionPool)
+			conn.setAutoCommit(false)
+			dao.insert(new User("1", "jade"))
+			dao.insert(new User("2", "yun"))
+			if (!conn.getAutoCommit) { conn.commit(); }
+			dao.insert(new User("3", "wendy"))
+			dao.insert(new User("4", "wen"))
+			logInfo("--------userid {} is {}", "3", dao.getById("3").right.get.name)
+			logInfo("--------userid {} is {}", "4", dao.getById("4").right.get.name)
+			assert("wendy"     == dao.getById("3").right.get.name)
+			assert("wen"      == dao.getById("4").right.get.name)
+			conn.rollback()
+			dao.insert(new User("5", "tiantian"))
+			//
+			assert("jade"     == dao.getById("1").right.get.name)
+			assert("yun"      == dao.getById("2").right.get.name)
+			assert(true       == dao.getById("3").isLeft)
+			assert(true       == dao.getById("4").isLeft)
+			assert("tiantian" == dao.getById("5").right.get.name)
+			if (!conn.getAutoCommit) { conn.commit(); }
+		})
+	}
+
+
+	test("Test-trans-02-rollback-manual-savepoint") {
+		testInEnv((conn) => {
+			logInfo("------------------------test create database\n")
+			val dao = new UserDao(MysqlDaoSessionPool)
+			conn.setAutoCommit(false)
+			dao.insert(new User("1", "jade"))
+			dao.insert(new User("2", "yun"))
+			if (!conn.getAutoCommit) { conn.commit(); }
+			val savepoint = conn.setSavepoint("" + System.currentTimeMillis())
+			dao.insert(new User("3", "wendy"))
+			dao.insert(new User("4", "wen"))
+			logInfo("--------userid {} is {}", "3", dao.getById("3").right.get.name)
+			logInfo("--------userid {} is {}", "4", dao.getById("4").right.get.name)
+			assert("wendy"     == dao.getById("3").right.get.name)
+			assert("wen"      == dao.getById("4").right.get.name)
+			conn.rollback(savepoint)
+			dao.insert(new User("5", "tiantian"))
+			//
+			assert("jade"     == dao.getById("1").right.get.name)
+			assert("yun"      == dao.getById("2").right.get.name)
+			assert(true       == dao.getById("3").isLeft)
+			assert(true       == dao.getById("4").isLeft)
+			assert("tiantian" == dao.getById("5").right.get.name)
+			if (!conn.getAutoCommit) { conn.commit(); }
+		})
+	}
+	
+	test("Test-trans-03-rollback-by-exception") {
+		testInEnv((conn) => {
+			logInfo("------------------------test rollback by exception\n")
+			val dao = new UserDao(MysqlDaoSessionPool)
+			conn.setAutoCommit(false)
+			dao.insert(new User("1", "jade"))
+			dao.insert(new User("2", "yun"))
+			dao.insert(new User("3", "wendy"))
+			dao.insert(new User("4", "wen"))
+			assert("jade"  == dao.getById("1").right.get.name)
+			assert("yun"   == dao.getById("2").right.get.name)
+			assert("wendy" == dao.getById("3").right.get.name)
+			assert("wen"    == dao.getById("4").right.get.name)
+			intercept[java.lang.RuntimeException] {
+				try {
+					dao.insert(new User(null, "tiantian"))
+				} catch {
+					case e: RuntimeException => if (!conn.getAutoCommit) {
+						conn.rollback();
+						throw e
+					}
+				}
+			}
+			if (!conn.getAutoCommit) { conn.commit(); }
+			assert(dao.getById("1").isLeft)
+			assert(dao.getById("2").isLeft)
+			assert(dao.getById("3").isLeft)
+			assert(dao.getById("4").isLeft)
+			assert(dao.getById("5").isLeft)
+		})
+	}
+
+
 
 //	test("Test-trans-01") {
 //		testInEnv((conn) => {

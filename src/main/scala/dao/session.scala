@@ -75,7 +75,7 @@ class DaoSession(//
 
 	def isInTransaction() = !transStack.isEmpty
 
-	def close() { pool.close(this) }
+	def close() { pool.returnBack(this) }
 
 	override def toString = "(%s, %b)".format(id, isBroken)
 }
@@ -95,17 +95,35 @@ abstract class DaoSessionPool( //
 	def this() = this(20, 50, 20)
 
 	// 创建JDBC连接
-	def connectDB(): Either[RuntimeException,java.sql.Connection]
+	protected[this] def connectDB(): Either[RuntimeException,java.sql.Connection]
 
 	def current: Either[RuntimeException, DaoSession] = {
 		var s = currSess.get
-		if (null == s) create else if (s.isBroken()) {
+		if (null == s) borrow() else if (!s.isBroken()) Right(s) else {
 			currSess.get.close
-			create()
-		} else Right(s)
+			borrow()
+		} 
 	}
 
-	def create(): Either[RuntimeException, DaoSession] = {
+	/**
+	 * 从连接池中拿一个可用的会话
+	 */
+	def borrow(): Either[RuntimeException, DaoSession] = {
+		def getAvaliable(): Either[RuntimeException, DaoSession] = {
+			val sess = if (idleSess.size < 1) {
+				// 没有空闲的连接就新建一个
+				val dbConn = connectDB()
+				if (dbConn.isLeft) Left(dbConn.left.get)
+				else Right(new DaoSession("" + size, dbConn.right.get, this))
+			} else {
+				// 有空闲的连接就取一个
+				var first = idleSess.head
+				idleSess = idleSess.tail
+				Right(first)
+			}
+			// drop borken session, find next idle session
+			if (sess.isRight && !sess.right.get.isBroken()) sess else getAvaliable()
+		}
 		if (size >= maxPoolSize) {
 			Left(new RuntimeException("Db connection Pool filled"))
 		} else {
@@ -123,24 +141,11 @@ abstract class DaoSessionPool( //
 		}
 	}
 
-	private[this] def getAvaliable(): Either[RuntimeException, DaoSession] = {
-		val sess = if (idleSess.size < 1) {
-			// 没有空闲的连接就新建一个
-			val dbConn = connectDB()
-			if (dbConn.isLeft) Left(dbConn.left.get)
-			else Right(new DaoSession("" + size, dbConn.right.get, this))
-		} else {
-			// 有空闲的连接就取一个
-			var first = idleSess.head
-			idleSess = idleSess.tail
-			Right(first)
-		}
-		// drop borken session, find next idle session
-		if (sess.isRight && !sess.right.get.isBroken()) sess else getAvaliable()
-	}
 
-	// TODO: 其实并不是要close，而是return borrow来的connection? 
-	def close(sess: DaoSession) {
+	/**
+	 * 查询完成，放回连接池
+	 */
+	def returnBack(sess: DaoSession) {
 		if (actvSess.contains(sess.id) && !actvSess.get(sess.id).get.isInTransaction()) {
 			actvSess = actvSess - sess.id
 			idleSess = sess :: idleSess

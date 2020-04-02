@@ -167,40 +167,6 @@ class SqliteDaoTest extends FunSuite with Logging {
 	}
 
 
-//	test("Test-trans-00-manual-commit") {
-//		testInEnv((conn) => {
-//			logInfo("------------------------test create database\n")
-//			val dao = new UserDao(SqliteDaoSessionPool)
-//			val user = new User("1", "jade")
-//			conn.setAutoCommit(false)
-//			// val savepoint = conn.setSavepoint("" + System.currentTimeMillis())
-//			dao.insert(user)
-//			// conn.rollback()
-//			// conn.rollback(savepoint)
-//			 conn.commit();
-//			logInfo("--------userid {} is {}", user.id, dao.getById(user.id).name)
-//		})
-//	}
-
-//	test("Test-trans-01") {
-//		testInEnv((conn) => {
-//			logInfo("......................... conn trans\n")
-//
-//			object UserService extends TestBaseService {
-//				private val dao = new UserDao(SqliteDaoSessionPool)
-//
-//				def getUser(id: String): User = { dao.getById(id) }
-//
-//				def insertUser(user: User) { 
-//					dao.conn().setAutoCommit(false)
-//					dao.insert(user) 
-//					dao.conn().commit()
-//				}
-//			}
-//			val user = new User("1", "jade")
-//			UserService.insertUser(user)
-//		})
-//	}
 //
 //	test("Test-trans-02") {
 //		testInEnv((conn) => {
