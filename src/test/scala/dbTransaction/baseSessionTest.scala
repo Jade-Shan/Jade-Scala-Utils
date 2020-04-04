@@ -13,51 +13,16 @@ import scala.Right
 class SessionTest extends FunSuite with Logging {
 	import jadeutils.comm.dao.TransIso
 
-	object SqliteDaoSessionFactory extends DaoSessionPool(3, 10, 5) {
+	object SqliteDaoSessionPool extends DaoSessionPool(3, 10, 5) {
 		val defaultIsolation = TransIso.TS_SERIALIZABLE
 
 		def connectDB() = Right(DriverManager.getConnection(
-			"jdbc:sqlite:db-test-00.db"))
+			"jdbc:sqlite:db-test-00.db"
+		))
 	}
 
-//	class TestBaseService extends BaseTransactionService {
-//		val daoSessPool = SqliteDaoSessionFactory
-//	}
-//
-//	class User(val id: Int, val name: String) {
-//		override def toString: String = "{%d, %s}".format(id, name)
-//	}
-//
-//	class UserDao(session: DaoSession) extends Dao[User, Int] with Logging {
-//
-//		def getById(id: Int): Either[RuntimeException, User] = {
-//			logTrace("before query")
-//			val u = if (id > 0) {
-//				Right(new User(id, "TestUser" + id))
-//			} else Left(new RuntimeException("Exception for Text"))
-//			logTrace("after query")
-//			u
-//		}
-//
-//		def insert(model: User): Either[RuntimeException, Unit] = {
-//			logTrace("before insert")
-//			val res = if (null != model) Right(()) else
-//				new Left(new RuntimeException("Exception for Text"))
-//			logTrace("after insert")
-//			res
-//		}
-//
-//	}
-
-//	object UserService extends TestBaseService {
-//		private val dao = new UserDao(daoSessPool.current)
-//		def getUser(id: Int): User = withTransaction { dao.getById(id) }
-//		def insertUser(user: User) { withTransaction { dao.insert(user) } }
-//	}
-
-
-	test("Test-session-pool") {
-		val fc = SqliteDaoSessionFactory
+	test("Test-00-session-pool-size") {
+		val fc = SqliteDaoSessionPool
 		logInfo("......................... create new session\n")
 		val s1 = fc.borrow()
 		val s2 = fc.borrow()
@@ -94,30 +59,65 @@ class SessionTest extends FunSuite with Logging {
 		sd.right.get.close
 	}
 
-//	test("Test-Trans-get-commit") {
-//		logInfo("======== test get commit =============")
-//		val u = UserService.getUser(33)
-//		logInfo("{}", u)
-//	}
-//
-//	test("Test-Trans-insert-commit") {
-//		logInfo("======== test insert commit =============")
-//		UserService.insertUser(new User(33, "Testuser33"))
-//	}
-//
-//	test("Test-Trans-get-rollback") {
-//		logInfo("======== test get rollback =============")
-//		intercept[java.lang.Exception] {
-//			val u = UserService.getUser(-33)
-//			logInfo("{}", u)
-//		}
-//	}
-//
-//	test("Test-Trans-insert-rollback") {
-//		logInfo("======== test insert rollback =============")
-//		intercept[java.lang.Exception] {
-//			UserService.insertUser(null)
-//		}
-//	}
+	//	class TestBaseService extends BaseTransactionService {
+	//		val daoSessPool = SqliteDaoSessionFactory
+	//	}
+	//
+	//	class User(val id: Int, val name: String) {
+	//		override def toString: String = "{%d, %s}".format(id, name)
+	//	}
+	//
+	//	class UserDao(session: DaoSession) extends Dao[User, Int] with Logging {
+	//
+	//		def getById(id: Int): Either[RuntimeException, User] = {
+	//			logTrace("before query")
+	//			val u = if (id > 0) {
+	//				Right(new User(id, "TestUser" + id))
+	//			} else Left(new RuntimeException("Exception for Text"))
+	//			logTrace("after query")
+	//			u
+	//		}
+	//
+	//		def insert(model: User): Either[RuntimeException, Unit] = {
+	//			logTrace("before insert")
+	//			val res = if (null != model) Right(()) else
+	//				new Left(new RuntimeException("Exception for Text"))
+	//			logTrace("after insert")
+	//			res
+	//		}
+	//
+	//	}
+
+	//	object UserService extends TestBaseService {
+	//		private val dao = new UserDao(daoSessPool.current)
+	//		def getUser(id: Int): User = withTransaction { dao.getById(id) }
+	//		def insertUser(user: User) { withTransaction { dao.insert(user) } }
+	//	}
+
+	//	test("Test-Trans-get-commit") {
+	//		logInfo("======== test get commit =============")
+	//		val u = UserService.getUser(33)
+	//		logInfo("{}", u)
+	//	}
+	//
+	//	test("Test-Trans-insert-commit") {
+	//		logInfo("======== test insert commit =============")
+	//		UserService.insertUser(new User(33, "Testuser33"))
+	//	}
+	//
+	//	test("Test-Trans-get-rollback") {
+	//		logInfo("======== test get rollback =============")
+	//		intercept[java.lang.Exception] {
+	//			val u = UserService.getUser(-33)
+	//			logInfo("{}", u)
+	//		}
+	//	}
+	//
+	//	test("Test-Trans-insert-rollback") {
+	//		logInfo("======== test insert rollback =============")
+	//		intercept[java.lang.Exception] {
+	//			UserService.insertUser(null)
+	//		}
+	//	}
 
 }
