@@ -10,86 +10,83 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
 import org.junit.runner.RunWith
 
+object SqliteEnv {
+	val dbName = "db-test-01.db"
+	val tableName = "testuser"
+}
+
+object SqliteDaoSessionPool extends DaoSessionPool(3, 10, 5) {
+	val defaultIsolation = TransIso.TS_SERIALIZABLE
+
+	def connectDB() = {
+		Class.forName("org.sqlite.JDBC")
+		Right(DriverManager.getConnection(
+			"jdbc:sqlite:" + SqliteEnv.dbName
+		))
+	}
+}
+
+class User(val id: String, val name: String) {
+	override def toString: String = "{%s, %s}".format(id, name)
+}
+
+class UserSqliteDao(pool: DaoSessionPool) extends Dao[User, String] with Logging {
+	def session() = pool.current
+	def conn() = session.right.get.conn
+
+	def getById(id: String): Either[RuntimeException, User] = {
+		logTrace("before query")
+		val u = if (null != id) {
+			val prep = conn.prepareStatement("select * from " + SqliteEnv.tableName + " where id = ?;")
+			prep.setString(1, id);
+			val rs = prep.executeQuery()
+			val rec = if (rs.next) {
+				Right(new User(rs.getString("id"), rs.getString("name")))
+			} else Left(new RuntimeException("No such Rec"))
+			logDebug("get user: {}", rec)
+			rs.close
+			session.right.get.close
+			rec
+		} else throw new RuntimeException("Exception for Text")
+		logTrace("after query")
+		u
+	}
+
+	def insert(model: User) {
+		logTrace("before insert")
+		if (null != model && null != model.id) {
+			val prep = conn.prepareStatement("insert into " + SqliteEnv.tableName + " values (?, ?);")
+
+			prep.setString(1, model.id);
+			prep.setString(2, model.name);
+			prep.addBatch();
+
+			prep.executeBatch()
+			session.right.get.close
+		} else throw new RuntimeException("Exception for Text")
+		logTrace("after insert")
+	}
+
+}
+
 @RunWith(classOf[JUnitRunner])
 class SqliteDaoTest extends FunSuite with Logging {
 	import jadeutils.comm.dao.TransIso
 
-	val dbName = "db-test-01.db"
-	val tableName = "testuser"
-
-	object SqliteDaoSessionPool extends DaoSessionPool (3, 10, 5) {
-		val defaultIsolation = TransIso.TS_SERIALIZABLE
-
-		def connectDB() = {
-			Class.forName("org.sqlite.JDBC")
-			Right(DriverManager.getConnection(
-				"jdbc:sqlite:" + dbName))
-		}
-	}
-
-	class TestBaseService extends BaseTransactionService {
-		val daoSessPool = SqliteDaoSessionPool
-	}
-
-	class User(val id: String, val name: String) {
-		override def toString: String = "{%s, %s}".format(id, name)
-	}
-
-	class UserDao(pool: DaoSessionPool) 
-	extends Dao[User, String] with Logging 
-	{
-		def session() = pool.current
-		def conn() = session.right.get.conn
-
-		def getById(id: String): Either[RuntimeException, User] = {
-			logTrace("before query")
-			val u = if (null != id) {
-				val prep = conn.prepareStatement("select * from " + tableName + " where id = ?;")
-				prep.setString(1, id);
-				val rs = prep.executeQuery()
-				val rec = if (rs.next) {
-					Right(new User(rs.getString("id"), rs.getString("name")))
-				} else Left(new RuntimeException("No such Rec"))
-				logDebug("get user: {}", rec)
-				rs.close
-				session.right.get.close
-				rec
-			} else throw new RuntimeException("Exception for Text")
-			logTrace("after query")
-			u
-		}
-
-		def insert(model: User)  {
-			logTrace("before insert")
-			if (null != model && null != model.id) {
-				val prep = conn.prepareStatement("insert into " + tableName + " values (?, ?);")
-
-				prep.setString(1, model.id);
-				prep.setString(2, model.name);
-				prep.addBatch();
-
-				prep.executeBatch()
-				session.right.get.close
-			} else throw new RuntimeException("Exception for Text")
-			logTrace("after insert")
-		}
-
-	}
-
 	def testInEnv(opts: (Connection) => Unit) {
 		val conn = SqliteDaoSessionPool.current.right.get.conn
 		val stat = conn.createStatement()
-		conn.prepareStatement("drop table if exists " + tableName + "").executeUpdate();
-		conn.prepareStatement("create table " + tableName + " (id, name)").executeUpdate();
+		conn.prepareStatement("drop table if exists " + SqliteEnv.tableName + "").executeUpdate();
+		conn.prepareStatement("create table " + SqliteEnv.tableName + " (id, name)").executeUpdate();
 		opts(conn)
-		conn.prepareStatement("drop table if exists " + tableName + "").executeUpdate();
+		conn.prepareStatement("drop table if exists " + SqliteEnv.tableName + "").executeUpdate();
 		conn.close();
 	}
 
 	test("Test-trans-00-auto-commit") {
 		testInEnv((conn) => {
 			logInfo("------------------------test auto commit\n")
-			val dao = new UserDao(SqliteDaoSessionPool)
+			val dao = new UserSqliteDao(SqliteDaoSessionPool)
 			val user = new User("1", "jade")
 			conn.setAutoCommit(true)
 			dao.insert(user)
@@ -100,7 +97,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	test("Test-trans-01-manual-commit") {
 		testInEnv((conn) => {
 			logInfo("------------------------test manual commit\n")
-			val dao = new UserDao(SqliteDaoSessionPool)
+			val dao = new UserSqliteDao(SqliteDaoSessionPool)
 			val user = new User("1", "jade")
 			conn.setAutoCommit(false)
 			dao.insert(user)
@@ -113,7 +110,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	test("Test-trans-02-rollback-manual") {
 		testInEnv((conn) => {
 			logInfo("------------------------test rollback manual\n")
-			val dao = new UserDao(SqliteDaoSessionPool)
+			val dao = new UserSqliteDao(SqliteDaoSessionPool)
 			conn.setAutoCommit(false)
 			dao.insert(new User("1", "jade"))
 			dao.insert(new User("2", "yun"))
@@ -137,7 +134,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	test("Test-trans-03-rollback-by-exception") {
 		testInEnv((conn) => {
 			logInfo("------------------------test rollback by exception\n")
-			val dao = new UserDao(SqliteDaoSessionPool)
+			val dao = new UserSqliteDao(SqliteDaoSessionPool)
 			conn.setAutoCommit(false)
 			dao.insert(new User("1", "jade"))
 			dao.insert(new User("2", "yun"))
@@ -166,6 +163,11 @@ class SqliteDaoTest extends FunSuite with Logging {
 		})
 	}
 
+}
+
+//	class TestBaseService extends BaseTransactionService {
+//		val daoSessPool = SqliteDaoSessionPool
+//	}
 
 //
 //	test("Test-trans-02") {
@@ -234,5 +236,3 @@ class SqliteDaoTest extends FunSuite with Logging {
 //			assert(null == UserService.getUser("5"))
 //		})
 //	}
-
-}
