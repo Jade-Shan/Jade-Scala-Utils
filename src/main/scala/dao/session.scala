@@ -172,20 +172,20 @@ abstract class BaseTransactionService extends Logging {
 		autoCommit: Boolean      = false,             // 不自动提交
 		nesting:    TransNesting = TS_PG_REQUIRED, // 默认加入外层事务
 		iso:         TransIso     = TS_SERIALIZABLE // 默认事务隔离级别为顺序
-	) (callFunc: => T // 事务中的具体操作
-	) (implicit m: TypeTag[T]): T = { // 隐式参数自动匹配被事务包裹函数的返回类型
+	) (callFunc: => Either[Throwable, T] // 事务中的具体操作
+	) (implicit m: TypeTag[T]): Either[Throwable, T] = { // 隐式参数自动匹配被事务包裹函数的返回类型
 		warpSession(autoCommit, nesting, iso, callFunc)
 	}
 
 	@throws(classOf[SQLException])
-	def withTransaction[T](callFunc: => T)(implicit m: TypeTag[T]): T = {
+	def withTransaction[T](callFunc: => Either[Throwable, T])(implicit m: TypeTag[T]): Either[Throwable, T] = {
 		warpSession(false, TS_PG_REQUIRED, daoSessPool.defaultIsolation, callFunc)
 	}
 
 	@throws(classOf[SQLException])
 	private def warpSession[T]( //
-		autoCommit: Boolean, nesting: TransNesting, iso: TransIso, callFunc: => T //
-	) (implicit m: TypeTag[T]): T = {
+		autoCommit: Boolean, nesting: TransNesting, iso: TransIso, callFunc: => Either[Throwable, T] //
+	) (implicit m: TypeTag[T]): Either[Throwable, T] = {
 //		val sess = daoSessPool.current
 //
 //		dealwithTransNesting(sess, nesting)
@@ -207,7 +207,8 @@ abstract class BaseTransactionService extends Logging {
 //				sess.conn.commit()
 //				logTrace("Trans commit: S: {}", sess.id)
 //			}
-			Right(funcResult)
+//			Right(funcResult)
+			funcResult
 //		} catch {
 //			case e: RuntimeException => {
 //				if (!isAutoCommit) {
@@ -231,10 +232,10 @@ abstract class BaseTransactionService extends Logging {
 //			logTrace("Trans end: S: {}", sess.id)
 		}
 //
-		if (result.isLeft) throw result.left.get else {
-			result.right.get.asInstanceOf[T]
-		}
-
+//		if (result.isLeft) throw result.left.get else {
+//			result.right.get.asInstanceOf[T]
+//		}
+		result
 	}
 
 	@throws(classOf[SQLException])

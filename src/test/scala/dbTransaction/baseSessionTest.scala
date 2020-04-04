@@ -1,12 +1,13 @@
-package jadeutils.comm.dao
+package dbTransaction
 
 import jadeutils.common.Logging
-
 import java.sql.DriverManager
-
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
 import org.junit.runner.RunWith
+import jadeutils.comm.dao.DaoSessionPool
+import org.scalactic.source.Position.apply
+import scala.Right
 
 @RunWith(classOf[JUnitRunner])
 class SessionTest extends FunSuite with Logging {
@@ -19,34 +20,34 @@ class SessionTest extends FunSuite with Logging {
 			"jdbc:sqlite:db-test-00.db"))
 	}
 
-	class TestBaseService extends BaseTransactionService {
-		val daoSessPool = SqliteDaoSessionFactory
-	}
-
-	class User(val id: Int, val name: String) {
-		override def toString: String = "{%d, %s}".format(id, name)
-	}
-
-	class UserDao(session: DaoSession) extends Dao[User, Int] with Logging {
-
-		def getById(id: Int): Either[RuntimeException, User] = {
-			logTrace("before query")
-			val u = if (id > 0) {
-				Right(new User(id, "TestUser" + id))
-			} else Left(new RuntimeException("Exception for Text"))
-			logTrace("after query")
-			u
-		}
-
-		def insert(model: User): Either[RuntimeException, Unit] = {
-			logTrace("before insert")
-			val res = if (null != model) Right(()) else
-				new Left(new RuntimeException("Exception for Text"))
-			logTrace("after insert")
-			res
-		}
-
-	}
+//	class TestBaseService extends BaseTransactionService {
+//		val daoSessPool = SqliteDaoSessionFactory
+//	}
+//
+//	class User(val id: Int, val name: String) {
+//		override def toString: String = "{%d, %s}".format(id, name)
+//	}
+//
+//	class UserDao(session: DaoSession) extends Dao[User, Int] with Logging {
+//
+//		def getById(id: Int): Either[RuntimeException, User] = {
+//			logTrace("before query")
+//			val u = if (id > 0) {
+//				Right(new User(id, "TestUser" + id))
+//			} else Left(new RuntimeException("Exception for Text"))
+//			logTrace("after query")
+//			u
+//		}
+//
+//		def insert(model: User): Either[RuntimeException, Unit] = {
+//			logTrace("before insert")
+//			val res = if (null != model) Right(()) else
+//				new Left(new RuntimeException("Exception for Text"))
+//			logTrace("after insert")
+//			res
+//		}
+//
+//	}
 
 //	object UserService extends TestBaseService {
 //		private val dao = new UserDao(daoSessPool.current)
