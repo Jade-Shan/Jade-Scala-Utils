@@ -52,9 +52,9 @@ class UserSqliteDao(pool: DaoSessionPool) extends Dao[User, String] with Logging
 		u
 	}
 
-	def insert(model: User) {
+	def insert(model: User): Either[RuntimeException, Unit] = {
 		logTrace("before insert")
-		if (null != model && null != model.id) {
+		val res = if (null != model && null != model.id) {
 			val prep = conn.prepareStatement("insert into " + SqliteEnv.tableName + " values (?, ?);")
 
 			prep.setString(1, model.id);
@@ -63,8 +63,10 @@ class UserSqliteDao(pool: DaoSessionPool) extends Dao[User, String] with Logging
 
 			prep.executeBatch()
 			session.right.get.close
-		} else throw new RuntimeException("Exception for Text")
+			Right(())
+		} else Left(new RuntimeException("Exception for Text"))
 		logTrace("after insert")
+		res
 	}
 
 }
@@ -146,7 +148,10 @@ class SqliteDaoTest extends FunSuite with Logging {
 			assert("wen"    == dao.getById("4").right.get.name)
 			intercept[java.lang.RuntimeException] {
 				try {
-					dao.insert(new User(null, "tiantian"))
+					val res = dao.insert(new User(null, "tiantian"))
+					if (res.isLeft) {
+						throw new RuntimeException("get err", res.left.get)
+					}
 				} catch {
 					case e: RuntimeException => if (!conn.getAutoCommit) {
 						conn.rollback();

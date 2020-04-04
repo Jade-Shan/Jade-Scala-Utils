@@ -38,11 +38,12 @@ class SessionTest extends FunSuite with Logging {
 			u
 		}
 
-		def insert(model: User)  {
+		def insert(model: User): Either[RuntimeException, Unit] = {
 			logTrace("before insert")
-			if (null == model) 
-				throw new java.lang.RuntimeException("Exception for Text")
+			val res = if (null != model) Right(()) else
+				new Left(new RuntimeException("Exception for Text"))
 			logTrace("after insert")
+			res
 		}
 
 	}

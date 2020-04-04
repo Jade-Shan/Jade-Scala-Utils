@@ -4,6 +4,6 @@ trait Dao[T, K] {
 
 	def getById(id: K): Either[RuntimeException, T]
 
-	def insert(model: T): Unit
+	def insert(model: T): Either[RuntimeException, Unit]
 
 }
