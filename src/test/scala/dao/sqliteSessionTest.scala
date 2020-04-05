@@ -75,7 +75,8 @@ class UserSqliteDao(pool: DaoSessionPool) extends Dao[User, String] with Logging
 	def insert(model: User): Unit = {
 		logTrace("before insert")
 		val res = if (null != model && null != model.id) {
-			val prep = conn.prepareStatement("insert into " + SqliteEnv.tableName + " values (?, ?);")
+			val prep = conn.prepareStatement( //
+					"insert into " + SqliteEnv.tableName + " values (?, ?)")
 
 			prep.setString(1, model.id);
 			prep.setString(2, model.name);
@@ -91,7 +92,6 @@ class UserSqliteDao(pool: DaoSessionPool) extends Dao[User, String] with Logging
 
 @RunWith(classOf[JUnitRunner])
 class SqliteDaoTest extends FunSuite with Logging {
-	import jadeutils.comm.dao.TransIso
 
 	test("Test-trans-00-auto-commit") {
 		SqliteEnv.testInEnv((conn) => {

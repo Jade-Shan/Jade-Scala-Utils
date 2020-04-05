@@ -24,8 +24,8 @@
 	<appender name="APD-TRACE-CSL" class="ch.qos.logback.core.ConsoleAppender">
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
 			<!--只记录TRACE级别的 
-			<level>TRACE</level><onMatch>ACCEPT</onMatch><onMismatch>DENY</onMismatch>
 				 -->
+			<level>TRACE</level><onMatch>ACCEPT</onMatch><onMismatch>DENY</onMismatch>
 			<level>ERROR</level><onMatch>DENY</onMatch>
 			<level>WARN</level><onMatch>DENY</onMatch>
 			<level>INFO</level><onMatch>DENY</onMatch>

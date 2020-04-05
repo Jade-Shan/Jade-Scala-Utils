@@ -58,13 +58,24 @@ abstract class TransactionLayer(
 
 class NewTransactionLayer(savepoint: Either[Throwable, Savepoint])
 	extends TransactionLayer(false, savepoint)
+{
+	
+	override def toString(): String = "new-trans-auto-commit:%s".format(autoCommit)
 
-class JoinLastTransaction extends TransactionLayer(false, null)
+}
+
+class JoinLastTransaction extends TransactionLayer(false, null) {
+	
+	override def toString(): String = "join-trans-auto-commit:%s".format(autoCommit)
+
+}
 
 class NoTransactionLayer(savepoint: Either[Throwable, Savepoint])
 	extends TransactionLayer(true, savepoint) //
 {
 	def this() = this(null)
+	
+	override def toString(): String = "no-trans-auto-commit:%s".format(autoCommit)
 }
 
 class DaoSession(val id: String, val conn: Connection, pool: DaoSessionPool //
@@ -77,13 +88,17 @@ class DaoSession(val id: String, val conn: Connection, pool: DaoSessionPool //
 	}
 
 	def pushTransaction(transEntry: TransactionLayer) {
+		logDebug("Trans layer stack before push: {}", transStack)
 		transStack = transEntry :: transStack
+		logDebug("Trans layer stack after push: {}", transStack)
 	}
 
 	def popTransaction(): Option[TransactionLayer] = {
+		logDebug("Trans layer stack before pop: {}", transStack)
 		val transEntry = currTransactionLayer
 		transStack = transStack.tail
 		if (!isInTransaction) this.close() // 全部事务完成，关闭会话
+		logDebug("Trans layer stack after  pop: {}", transStack)
 		transEntry
 	}
 
@@ -152,7 +167,7 @@ abstract class DaoSessionPool(val minPoolSize: Int, val maxPoolSize: Int, val in
 				actvSess = actvSess + (sess.id -> sess)
 				currSess.set(sess)
 
-				logTrace("after create session: size: {} ----- max: {}\nidle: {}\nactive: {}",
+				logDebug("after create session: size: {} ----- max: {}\nidle: {}\nactive: {}",
 				size, maxPoolSize, idleSess, actvSess
 				)
 				Right(sess)
@@ -169,7 +184,7 @@ abstract class DaoSessionPool(val minPoolSize: Int, val maxPoolSize: Int, val in
 			idleSess = sess :: idleSess
 			currSess.remove()
 		}
-		logTrace("after close session: size: {} ----- max: {}\nidle: {}\nactive: {}",
+		logDebug("after close session: size: {} ----- max: {}\nidle: {}\nactive: {}",
 		size, maxPoolSize, idleSess, actvSess
 		)
 	}
@@ -195,14 +210,34 @@ abstract class BaseTransactionService extends Logging {
 	}
 
 	@throws(classOf[Throwable])
-	def withTransaction[T](callFunc: => T)(implicit m: TypeTag[T]): T = {
-		warpSession(TS_PG_REQUIRED, daoSessPool.defaultIsolation, callFunc) match {
+	def withTransaction[T](nesting: TransNesting)(callFunc: => T)(implicit m: TypeTag[T]): T = //
+	{ // 隐式参数自动匹配被事务包裹函数的返回类型
+		warpSession(nesting, daoSessPool.defaultIsolation, callFunc) match {
 			case Success(r) => r
 			case Failure(e: Throwable) => throw e
 		}
 	}
 
-	private def warpSession[T](nesting: TransNesting, iso: TransIso, callFunc: T)(implicit m: TypeTag[T]): Try[T] = //
+	@throws(classOf[Throwable])
+	def withTransaction[T](iso: TransIso)(callFunc: => T)(implicit m: TypeTag[T]): T = //
+	{ // 隐式参数自动匹配被事务包裹函数的返回类型
+		warpSession(TS_PG_REQUIRED, iso, callFunc) match {
+			case Success(r) => r
+			case Failure(e: Throwable) => throw e
+		}
+	}
+
+	@throws(classOf[Throwable])
+	def withTransaction[T](callFunc: => T)(implicit m: TypeTag[T]): T = {
+		val transRes = warpSession(TS_PG_REQUIRED, daoSessPool.defaultIsolation, callFunc) 
+		logDebug("before trans end, trans-result is : ", transRes)
+		transRes match {
+			case Success(r) => r
+			case Failure(e: Throwable) => throw e
+		}
+	}
+
+	private def warpSession[T](nesting: TransNesting, iso: TransIso, callFunc: => T)(implicit m: TypeTag[T]): Try[T] = //
 	{
 		val sessT = daoSessPool.current
 		if (sessT.isLeft) {
@@ -213,23 +248,34 @@ abstract class BaseTransactionService extends Logging {
 
 		dealwithTransNesting(sess, nesting, iso)   // 新建内层事务
 		
-		val callRes: Try[T] = util.Try(callFunc)   // 执行具体操作
+//		val callRes: Try[T] = util.Try(callFunc)   // 执行具体操作
+		val callRes: Try[T] = try {
+			val cfr = callFunc
+			Success(cfr)   // 执行具体操作
+		} catch {
+			case t: Throwable => Failure(t)
+		}
+			
 
 		endTransNesting(sess, callRes)             // 处理异常并返回到外层事务
 	}
 
 	private[this] def endTransNesting[T](sess: DaoSession, callRes: Try[T])(implicit m: TypeTag[T]): Try[T] = {
+		logDebug("before trans end, call-func-result is {}: ", callRes)
+		logDebug("remove Trans on connection, trans id: {}, conn: {} auto-commit:{} , iso: {}", sess.id, sess.conn, sess.conn.getAutoCommit)
+		//
 		val currTransLayer = sess.popTransaction() // 弹出当前一层事务
+
 		val transResult: Try[T] = currTransLayer match {
 			case Some(l: NewTransactionLayer) => callRes match {
 				case s: Success[T] => { // 新事务，成功后提交修改
-					logTrace("Call Func Success, start commit transaction manually: S: {}", sess.id)
+					logDebug("Call Func Success, start commit transaction manually: S: {}", sess.id)
 					sess.conn.commit()
-					logTrace("Call Func Success, commit transaction manually success: S: {}", sess.id)
+					logDebug("Call Func Success, commit transaction manually success: S: {}", sess.id)
 					callRes
 				}
 				case Failure(f) => { // 新事务，失败后直接回滚。不让错误传播到外层
-					logTrace("Call Func Err, Trans rollback: S: {} for err: {}", f)
+					logDebug("Call Func Err, Trans rollback: S: {} for err: {}", f)
 					if (null != l && l.savepoint.isRight) {
 						sess.conn.rollback(l.savepoint.right.get)
 					} else sess.conn.rollback()
@@ -238,86 +284,94 @@ abstract class BaseTransactionService extends Logging {
 			}
 			case Some(l: JoinLastTransaction) => callRes match {
 				case s: Success[T] => { // 外层事务，成功后不提交，等待外层事务完成一同提交
-					logTrace("Call Func Success, retrun outter transaction : S: {}", sess.id)
+					logDebug("Call Func Success, retrun outter transaction : S: {}", sess.id)
 					callRes
 				}
 				case Failure(f) => { // 外层事务，失败后不回滚，报错给外层事务一同回滚
-					logTrace("Call Func Err, need rollback outter transaction : S: {}", sess.id)
+					logDebug("Call Func Err, need rollback outter transaction : S: {}", sess.id)
 					callRes
 				}
 			}
 			case Some(_) => callRes match { // 不支持的事务，作为当作外层事务处理
 				case s: Success[T] => {
-					logTrace("Call Func Success, not in transaction: S: {}", sess.id)
+					logDebug("Call Func Success, not in transaction: S: {}", sess.id)
 					callRes
 				}
 				case Failure(f) => {
-					logTrace("Call Func Err, need rollback outter transaction : S: {}", sess.id)
+					logDebug("Call Func Err, need rollback outter transaction : S: {}", sess.id)
 					callRes
 				}
 			}
 			case None => callRes match {
 				case s: Success[T] => { // 没有事务，按自动提交操作
-					logTrace("Call Func Success, not in transaction: S: {}", sess.id)
+					logDebug("Call Func Success, not in transaction: S: {}", sess.id)
 					if (!sess.conn.getAutoCommit) { sess.conn.commit() }
 					callRes
 				}
 				case Failure(f) => {
-					logTrace("Call Func Err, not in transaction so no rollback: S: {}", sess.id)
+					logDebug("Call Func Err, not in transaction so no rollback: S: {}", sess.id)
 					Success(generateDefaultResult(typeOf[T]).asInstanceOf[T])
 				}
 			}
 		}
 
+		logDebug("resume outter layer trans, autosave: {} ", !sess.isInTransaction)
 		sess.conn.setAutoCommit(!sess.isInTransaction) // 恢复外层事务
-		
+
 		transResult
 	}
 	
 
 	private[this] def dealwithTransNesting(sess: DaoSession, nesting: TransNesting, iso: TransIso): Unit = {
-		def createSavepoint(): Either[Throwable, Savepoint] = try {
-			Right(sess.conn.setSavepoint("" + System.currentTimeMillis()))
-		} catch {
-			case e: Throwable => Left(e)
-		}
-		nesting match {
+
+		def createSavepoint(): Either[Throwable, Savepoint] = Left(//
+				new RuntimeException("DB not Support Savepoint")) 
+//		try {
+//			Right(sess.conn.setSavepoint("" + System.currentTimeMillis()))
+//		} catch { case e: Throwable => Left(e) }
+
+		logDebug("warpping transaction layer: {}", nesting)
+		val currLayer:Try[TransactionLayer] = nesting match {
 			case TS_PG_NEVER => if (sess.isInTransaction) {
 				// PROPAGATION_NEVER -- 以非事务方式执行，如果当前存在事务，则抛出异常。
-				throw new RuntimeException("Expect not in any transaction");
-			} else sess.pushTransaction(new NoTransactionLayer)
+				Failure(new RuntimeException("Expect not in any transaction"))
+			} else Success(new NoTransactionLayer)
 			case TS_PG_MANDATORY => if (sess.isInTransaction) {
 				// PROPAGATION_MANDATORY -- 支持当前事务，如果当前没有事务，就抛出异常。
-				sess.pushTransaction(new JoinLastTransaction)
-			} else throw new RuntimeException("Expect in transaction but not");
+				Success(new JoinLastTransaction)
+			} else Failure(new RuntimeException("Expect in transaction but not"))
 			case TS_PG_REQUIRED => if (sess.isInTransaction) {
 				// PROPAGATION_REQUIRED -- 支持当前事务，如果当前没有事务，就新建一个事务。这是最常见的选择。
-				sess.pushTransaction(new JoinLastTransaction)
-			} else sess.pushTransaction(new NewTransactionLayer(createSavepoint))
-			case TS_PG_NESTED => if (!sess.isInTransaction) {
+				Success(new JoinLastTransaction)
+			} else Success(new NewTransactionLayer(createSavepoint))
+			case TS_PG_NESTED => {
 				// PROPAGATION_NESTED -- 如果当前存在事务，则在嵌套事务内执行。
 				// 如果当前没有事务，则进行与PROPAGATION_REQUIRED类似的操作。
-				sess.pushTransaction(new NewTransactionLayer(createSavepoint))
+				Success(new NewTransactionLayer(createSavepoint))
 			}
 			case TS_PG_SUPPORTS => if (sess.isInTransaction) {
 				// PROPAGATION_SUPPORTS -- 支持当前事务，如果当前没有事务，就以非事务方式执行。
-				sess.pushTransaction(new JoinLastTransaction)
-			} else sess.pushTransaction(new NoTransactionLayer)
+				Success(new JoinLastTransaction)
+			} else Success(new NoTransactionLayer)
 			case TS_PG_REQUIRES_NEW => {
 				// PROPAGATION_REQUIRES_NEW -- 新建事务，如果当前存在事务，把当前事务挂起。
-				sess.pushTransaction(new NewTransactionLayer(createSavepoint))
+				Success(new NewTransactionLayer(createSavepoint))
 			}
 			case TS_PG_NOT_SUPPORTED => {
 				// PROPAGATION_NOT_SUPPORTED -- 以非事务方式执行操作，如果当前存在事务，就把当前事务挂起。
-				sess.pushTransaction(new NoTransactionLayer)
+				Success(new NoTransactionLayer)
 			}
-			case _ => throw new RuntimeException("UnSupport Transaction Type")
+			case _ => Failure(new RuntimeException("UnSupport Transaction Type"))
 		}
+
+		if (currLayer.isSuccess) {
+			sess.pushTransaction(currLayer.get)	
+		} else throw currLayer.failed.get 
 
 		val isAutoCommit = !sess.isInTransaction
 		sess.conn.setTransactionIsolation(iso.id)
 		sess.conn.setAutoCommit(isAutoCommit)
-		logTrace("Trans begin: S: {}", sess.id)
+		logDebug("   add Trans on connection, trans id: {}, conn: {} auto-commit:{} , iso: {}", sess.id, sess.conn, sess.conn.getAutoCommit, iso)
 	}
 
 	private[this] def generateDefaultResult(m: Type): Any = m match {
