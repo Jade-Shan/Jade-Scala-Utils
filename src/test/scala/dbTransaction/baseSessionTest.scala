@@ -1,25 +1,14 @@
-package dbTransaction
+package jadeutils.comm.dao
 
 import jadeutils.common.Logging
 import java.sql.DriverManager
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
 import org.junit.runner.RunWith
-import jadeutils.comm.dao.DaoSessionPool
-import org.scalactic.source.Position.apply
-import scala.Right
+
 
 @RunWith(classOf[JUnitRunner])
-class SessionTest extends FunSuite with Logging {
-	import jadeutils.comm.dao.TransIso
-
-	object SqliteDaoSessionPool extends DaoSessionPool(3, 10, 5) {
-		val defaultIsolation = TransIso.TS_SERIALIZABLE
-
-		def connectDB() = Right(DriverManager.getConnection(
-			"jdbc:sqlite:db-test-00.db"
-		))
-	}
+class SqliteDaoSessionTest extends FunSuite with Logging {
 
 	test("Test-00-session-pool-size") {
 		val fc = SqliteDaoSessionPool

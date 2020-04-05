@@ -9,6 +9,10 @@ import jadeutils.common.Logging
 
 import enumeratum.EnumEntry
 import enumeratum.Enum
+import scala.util.Success
+import scala.util.Failure
+import scala.util.Try
+import scala.xml.dtd.ContentModel.Translator
 
 /**
  * 事务隔离级别的抽象
@@ -181,88 +185,97 @@ abstract class BaseTransactionService extends Logging {
 
 	protected val daoSessPool: DaoSessionPool
 
-	def withTransaction[T]( //
-			nesting: TransNesting = TS_PG_REQUIRED,     // 默认加入外层事务
-			iso: TransIso = TS_SERIALIZABLE             // 默认事务隔离级别为顺序
-	)(callFunc: => Either[Throwable, T] // 事务中的具体操作
-	)(implicit m: TypeTag[T]): Either[Throwable, T] = { // 隐式参数自动匹配被事务包裹函数的返回类型
-		warpSession(nesting, iso, callFunc)
+	@throws(classOf[Throwable])
+	def withTransaction[T](nesting: TransNesting, iso: TransIso)(callFunc: => T)(implicit m: TypeTag[T]): T = //
+	{ // 隐式参数自动匹配被事务包裹函数的返回类型
+		warpSession(nesting, iso, callFunc) match {
+			case Success(r) => r
+			case Failure(e: Throwable) => throw e
+		}
 	}
 
-	def withTransaction[T](callFunc: => Either[Throwable, T])(implicit m: TypeTag[T]): Either[Throwable, T] = {
-		warpSession(TS_PG_REQUIRED, daoSessPool.defaultIsolation, callFunc)
+	@throws(classOf[Throwable])
+	def withTransaction[T](callFunc: => T)(implicit m: TypeTag[T]): T = {
+		warpSession(TS_PG_REQUIRED, daoSessPool.defaultIsolation, callFunc) match {
+			case Success(r) => r
+			case Failure(e: Throwable) => throw e
+		}
 	}
 
-	private def warpSession[T](nesting: TransNesting, iso: TransIso, 
-			callFunc: => Either[Throwable, T])
-		(implicit m: TypeTag[T]): Either[Throwable, T] = //
+	private def warpSession[T](nesting: TransNesting, iso: TransIso, callFunc: T)(implicit m: TypeTag[T]): Try[T] = //
 	{
 		val sessT = daoSessPool.current
 		if (sessT.isLeft) {
 			logError("Lost Connection from database")
 			Left(new RuntimeException("Lost Connection from database"))
 		}
-
 		val sess = sessT.right.get
-		dealwithTransNesting(sess, nesting)
-		//		val lastTrans = if (sess.lastTransaction().isEmpty) {
-		//		TransactionEntry(true, Left(new RuntimeException("not in transaction")))
-		//		} else sess.lastTransaction().get
-		//
-		val isAutoCommit = !sess.isInTransaction
 
-		sess.conn.setTransactionIsolation(iso.id)
-		sess.conn.setAutoCommit(isAutoCommit)
-		logTrace("Trans begin: S: {}", sess.id)
+		dealwithTransNesting(sess, nesting, iso)   // 新建内层事务
+		
+		val callRes: Try[T] = util.Try(callFunc)   // 执行具体操作
 
-		val result: Either[Throwable, T] = try callFunc catch { case e: Throwable => Left(e) }
+		endTransNesting(sess, callRes)             // 处理异常并返回到外层事务
+	}
 
-		val currTransLayer = sess.popTransaction();
-
-		if (result.isRight) currTransLayer match {
-			case Some(l: NewTransactionLayer) => {
-				logTrace("Call Func Success, start commit transaction manually: S: {}", sess.id)
-				sess.conn.commit()
-				logTrace("Call Func Success, commit transaction manually success: S: {}", sess.id)
-				result
+	private[this] def endTransNesting[T](sess: DaoSession, callRes: Try[T])(implicit m: TypeTag[T]): Try[T] = {
+		val currTransLayer = sess.popTransaction() // 弹出当前一层事务
+		val transResult: Try[T] = currTransLayer match {
+			case Some(l: NewTransactionLayer) => callRes match {
+				case s: Success[T] => { // 新事务，成功后提交修改
+					logTrace("Call Func Success, start commit transaction manually: S: {}", sess.id)
+					sess.conn.commit()
+					logTrace("Call Func Success, commit transaction manually success: S: {}", sess.id)
+					callRes
+				}
+				case Failure(f) => { // 新事务，失败后直接回滚。不让错误传播到外层
+					logTrace("Call Func Err, Trans rollback: S: {} for err: {}", f)
+					if (null != l && l.savepoint.isRight) {
+						sess.conn.rollback(l.savepoint.right.get)
+					} else sess.conn.rollback()
+					Success(generateDefaultResult(typeOf[T]).asInstanceOf[T])
+				}
 			}
-			case Some(l: JoinLastTransaction) => {
-				logTrace("Call Func Success, retrun outter transaction : S: {}", sess.id)
-				result
+			case Some(l: JoinLastTransaction) => callRes match {
+				case s: Success[T] => { // 外层事务，成功后不提交，等待外层事务完成一同提交
+					logTrace("Call Func Success, retrun outter transaction : S: {}", sess.id)
+					callRes
+				}
+				case Failure(f) => { // 外层事务，失败后不回滚，报错给外层事务一同回滚
+					logTrace("Call Func Err, need rollback outter transaction : S: {}", sess.id)
+					callRes
+				}
 			}
-			case Some(_) => {
-				logTrace("Call Func Success, not in transaction: S: {}", sess.id)
-				result
+			case Some(_) => callRes match { // 不支持的事务，作为当作外层事务处理
+				case s: Success[T] => {
+					logTrace("Call Func Success, not in transaction: S: {}", sess.id)
+					callRes
+				}
+				case Failure(f) => {
+					logTrace("Call Func Err, need rollback outter transaction : S: {}", sess.id)
+					callRes
+				}
 			}
-			case None => {
-				logTrace("Call Func Success, not in transaction: S: {}", sess.id)
-				result
-			}
-		} else currTransLayer match {
-			case Some(l: NewTransactionLayer) => {
-				logTrace("Call Func Err, Trans rollback: S: {} for err: {}", result.left.get)
-				if (null != l && l.savepoint.isRight) {
-					sess.conn.rollback(l.savepoint.right.get)
-				} else sess.conn.rollback()
-				result
-			}
-			case Some(l: JoinLastTransaction) => {
-				logTrace("Call Func Err, need rollback outter transaction : S: {}", sess.id)
-				// TODO: 如何回滚到外面一层事务？？？
-			}
-			case Some(_) => {
-				logTrace("Call Func Err, need rollback outter transaction : S: {}", sess.id)
-				// TODO: 如何回滚到外面一层事务？？？
-			}
-			case None => {
-				logTrace("Call Func Err, not in transaction so no rollback: S: {}", sess.id)
+			case None => callRes match {
+				case s: Success[T] => { // 没有事务，按自动提交操作
+					logTrace("Call Func Success, not in transaction: S: {}", sess.id)
+					if (!sess.conn.getAutoCommit) { sess.conn.commit() }
+					callRes
+				}
+				case Failure(f) => {
+					logTrace("Call Func Err, not in transaction so no rollback: S: {}", sess.id)
+					Success(generateDefaultResult(typeOf[T]).asInstanceOf[T])
+				}
 			}
 		}
 
-		result
+		sess.conn.setAutoCommit(!sess.isInTransaction) // 恢复外层事务
+		
+		transResult
 	}
+	
 
-	private[this] def dealwithTransNesting(sess: DaoSession, nesting: TransNesting): Unit = {
+	private[this] def dealwithTransNesting(sess: DaoSession, nesting: TransNesting, iso: TransIso): Unit = {
 		def createSavepoint(): Either[Throwable, Savepoint] = try {
 			Right(sess.conn.setSavepoint("" + System.currentTimeMillis()))
 		} catch {
@@ -300,18 +313,24 @@ abstract class BaseTransactionService extends Logging {
 			}
 			case _ => throw new RuntimeException("UnSupport Transaction Type")
 		}
+
+		val isAutoCommit = !sess.isInTransaction
+		sess.conn.setTransactionIsolation(iso.id)
+		sess.conn.setAutoCommit(isAutoCommit)
+		logTrace("Trans begin: S: {}", sess.id)
 	}
 
 	private[this] def generateDefaultResult(m: Type): Any = m match {
-		case t if (t <:< typeOf[Byte])    => 0
-		case t if (t <:< typeOf[Short])   => 0
-		case t if (t <:< typeOf[Int])     => 0
-		case t if (t <:< typeOf[Long])    => 0L
-		case t if (t <:< typeOf[Float])   => 0F
-		case t if (t <:< typeOf[Double])  => 0
-		case t if (t <:< typeOf[Char])    => '0'
-		case t if (t <:< typeOf[Boolean]) => false
-		case t if (t <:< typeOf[Unit])    => ()
+		case t if (t <:< typeOf[Byte])       => 0
+		case t if (t <:< typeOf[Short])      => 0
+		case t if (t <:< typeOf[Int])        => 0
+		case t if (t <:< typeOf[Long])       => 0L
+		case t if (t <:< typeOf[Float])      => 0F
+		case t if (t <:< typeOf[Double])     => 0
+		case t if (t <:< typeOf[Char])       => '0'
+		case t if (t <:< typeOf[Boolean])    => false
+		case t if (t <:< typeOf[Option[_]]) => None
+		case t if (t <:< typeOf[Unit])       => ()
 		case _ => null
 	}
 
