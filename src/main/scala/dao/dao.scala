@@ -2,8 +2,8 @@ package jadeutils.comm.dao
 
 trait Dao[T, K] {
 
-	def getById(id: K): Either[RuntimeException, T]
+	def getById(id: K): Option[T]
 
-	def insert(model: T): Either[RuntimeException, Unit]
+	def insert(model: T): Unit
 
 }
