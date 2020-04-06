@@ -93,6 +93,81 @@ class UserSqliteDao(pool: DaoSessionPool) extends Dao[User, String] with Logging
 @RunWith(classOf[JUnitRunner])
 class SqliteDaoTest extends FunSuite with Logging {
 
+	test("Test-session-pool-00-get-session") {
+		SqliteEnv.testInEnv((conn) => {
+			logInfo("......................... create new session\n")
+			val s1 = SqliteDaoSessionPool.borrow()
+			assert(s1.isRight)
+			s1.right.get.close
+		})
+	}
+
+	test("Test-session-pool-01-re-use-session") {
+		SqliteEnv.testInEnv((conn) => {
+			logInfo("......................... create new session\n")
+			val s1 = SqliteDaoSessionPool.borrow()
+			val s2 = SqliteDaoSessionPool.borrow()
+			val s3 = SqliteDaoSessionPool.borrow()
+			assert(s1.isRight)
+			assert(s2.isRight)
+			assert(s3.isRight)
+			logInfo("......................... close session\n")
+			s1.right.get.close
+			s2.right.get.close
+			s3.right.get.close
+			logInfo("......................... re-use in pool\n")
+			val s4 = SqliteDaoSessionPool.borrow()
+			val s5 = SqliteDaoSessionPool.borrow()
+			val s6 = SqliteDaoSessionPool.borrow()
+			assert(s4.isRight)
+			assert(s5.isRight)
+			assert(s6.isRight)
+			logInfo("......................... close again\n")
+			s4.right.get.close
+			s5.right.get.close
+			s6.right.get.close
+		})
+	}
+
+	test("Test-session-pool-02-pool-is-full") {
+		SqliteEnv.testInEnv((conn) => {
+			logInfo("......................... create new session\n")
+			val s1 = SqliteDaoSessionPool.borrow()
+			val s2 = SqliteDaoSessionPool.borrow()
+			val s3 = SqliteDaoSessionPool.borrow()
+			val s4 = SqliteDaoSessionPool.borrow()
+			val s5 = SqliteDaoSessionPool.borrow()
+			val s6 = SqliteDaoSessionPool.borrow()
+			val s7 = SqliteDaoSessionPool.borrow()
+			val s8 = SqliteDaoSessionPool.borrow()
+			val s9 = SqliteDaoSessionPool.borrow()
+			assert(s1.isRight)
+			assert(s2.isRight)
+			assert(s3.isRight)
+			assert(s4.isRight)
+			assert(s5.isRight)
+			assert(s6.isRight)
+			assert(s7.isRight)
+			assert(s8.isRight)
+			assert(s9.isRight)
+			// 最大10个连接，外层的的`testInEnv()`建了一个，
+			// 加上这里建立的9个，已经满了
+			logInfo("......................... pool overfool\n")
+			val sa = SqliteDaoSessionPool.borrow()
+			assert(sa.isLeft && sa.left.get.getMessage == "Db connection Pool filled")
+			logInfo("......................... clean up\n")
+			s1.right.get.close
+			s2.right.get.close
+			s3.right.get.close
+			s4.right.get.close
+			s5.right.get.close
+			s6.right.get.close
+			s7.right.get.close
+			s8.right.get.close
+			s9.right.get.close
+		})
+	}
+
 	test("Test-trans-00-auto-commit") {
 		SqliteEnv.testInEnv((conn) => {
 			logInfo("------------------------test auto commit\n")

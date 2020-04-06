@@ -159,17 +159,21 @@ abstract class DaoSessionPool(val minPoolSize: Int, val maxPoolSize: Int, val in
 			if (sess.isRight && !sess.right.get.isBroken()) sess else getAvaliable()
 		}
 		if (size >= maxPoolSize) {
+			logError("DaoSession pool is full: idle:{} + active:{} = count:{}, max:{}",
+				idleSess.size, actvSess.size, size, maxPoolSize)
 			Left(new RuntimeException("Db connection Pool filled"))
 		} else {
+			logTrace("DaoSession pool size : idle:{} + active:{} = count:{}, max:{}", 
+					idleSess.size, actvSess.size, size,  maxPoolSize)
 			val pse = getAvaliable() // 取一个可用的连接
 			if (pse.isLeft) pse else {
 				val sess = pse.right.get
 				actvSess = actvSess + (sess.id -> sess)
 				currSess.set(sess)
-
-				logTrace("after create session: size: {} ----- max: {}\nidle: {}\nactive: {}",
-				size, maxPoolSize, idleSess, actvSess
-				)
+				logTrace("After borrow: pool size : idle:{} + active:{} " + //
+					"= count:{}, max:{}\ncurr:{}\nactive: {}\nidle: {}", //
+					idleSess.size, actvSess.size, size, maxPoolSize, //
+					currSess.get, actvSess, idleSess)
 				Right(sess)
 			}
 		}
