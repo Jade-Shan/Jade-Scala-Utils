@@ -15,19 +15,20 @@ object SqliteEnv {
 	val tableName = "testuser"
 
 	def testInEnv(opts: (Connection) => Unit) {
-		val conn = SqliteDaoSessionPool.current.right.get.conn
+		val sess = SqliteDaoSessionPool.current.right.get
+		val conn = sess.conn
 		val stat = conn.createStatement()
 		conn.prepareStatement( //
 			"drop table if exists " + SqliteEnv.tableName + "" //
-		).executeUpdate();
+		).executeUpdate()
 		conn.prepareStatement( //
 			"create table " + SqliteEnv.tableName + " (id, name)" //
-		).executeUpdate();
+		).executeUpdate()
 		opts(conn)
 		conn.prepareStatement( //
 			"drop table if exists " + SqliteEnv.tableName + "" //
-		).executeUpdate();
-		conn.close();
+		).executeUpdate()
+		sess.close()
 	}
 }
 

@@ -188,9 +188,10 @@ abstract class DaoSessionPool(val minPoolSize: Int, val maxPoolSize: Int, val in
 			idleSess = sess :: idleSess
 			currSess.remove()
 		}
-		logTrace("after close session: size: {} ----- max: {}\nidle: {}\nactive: {}",
-		size, maxPoolSize, idleSess, actvSess
-		)
+		logTrace("After return: pool size : idle:{} + active:{} " + //
+					"= count:{}, max:{}\ncurr:{}\nactive: {}\nidle: {}", //
+					idleSess.size, actvSess.size, size, maxPoolSize, //
+					currSess.get, actvSess, idleSess)
 	}
 
 }

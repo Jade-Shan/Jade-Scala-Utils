@@ -15,21 +15,22 @@ object MysqlEnv {
 	val tableName = "testuser"
 
 	def testInEnv(opts: (Connection) => Unit) {
-		val conn = MysqlDaoSessionPool.current.right.get.conn
-
+		val sess = MysqlDaoSessionPool.current.right.get
+		val conn = sess.conn
 		val stat = conn.createStatement()
 		conn.prepareStatement(//
 				"drop table if exists " + MysqlEnv.tableName + "" //
 			).executeUpdate();
 		conn.prepareStatement(//
 				"CREATE TABLE `" + MysqlEnv.dbName + "`.`" + MysqlEnv.tableName + "` " + //
-			"(`id` INT NOT NULL, `name` VARCHAR(45) default '', PRIMARY KEY (`id`)) " //
+			"(`id` INT NOT NULL, `name` VARCHAR(45) default '', PRIMARY KEY (`id`)) " + //
+			" ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4"
 		).executeUpdate();
 		opts(conn)
 		conn.prepareStatement(//
 				"drop table if exists " + MysqlEnv.tableName + ""//
 			).executeUpdate();
-		conn.close();
+		sess.close();
 	}
 }
 
@@ -90,7 +91,80 @@ class UserMysqlDao(pool: DaoSessionPool) extends Dao[User, String] with Logging 
 
 @RunWith(classOf[JUnitRunner])
 class MySqlDaoTest extends FunSuite with Logging {
-//	import jadeutils.comm.dao.TransIso
+
+	test("Test-session-pool-00-get-session") {
+		MysqlEnv.testInEnv((conn) => {
+			logInfo("......................... create new session\n")
+			val s1 = MysqlDaoSessionPool.borrow()
+			assert(s1.isRight)
+			s1.right.get.close
+		})
+	}
+
+	test("Test-session-pool-01-re-use-session") {
+		MysqlEnv.testInEnv((conn) => {
+			logInfo("......................... create new session\n")
+			val s1 = MysqlDaoSessionPool.borrow()
+			val s2 = MysqlDaoSessionPool.borrow()
+			val s3 = MysqlDaoSessionPool.borrow()
+			assert(s1.isRight)
+			assert(s2.isRight)
+			assert(s3.isRight)
+			logInfo("......................... close session\n")
+			s1.right.get.close
+			s2.right.get.close
+			s3.right.get.close
+			logInfo("......................... re-use in pool\n")
+			val s4 = MysqlDaoSessionPool.borrow()
+			val s5 = MysqlDaoSessionPool.borrow()
+			val s6 = MysqlDaoSessionPool.borrow()
+			assert(s4.isRight)
+			assert(s5.isRight)
+			assert(s6.isRight)
+			logInfo("......................... close again\n")
+			s4.right.get.close
+			s5.right.get.close
+			s6.right.get.close
+		})
+	}
+
+	test("Test-session-pool-02-pool-is-full") {
+		MysqlEnv.testInEnv((conn) => {
+			logInfo("......................... create new session\n")
+			val s1 = MysqlDaoSessionPool.borrow()
+			val s2 = MysqlDaoSessionPool.borrow()
+			val s3 = MysqlDaoSessionPool.borrow()
+			val s4 = MysqlDaoSessionPool.borrow()
+			val s5 = MysqlDaoSessionPool.borrow()
+			val s6 = MysqlDaoSessionPool.borrow()
+			val s7 = MysqlDaoSessionPool.borrow()
+			val s8 = MysqlDaoSessionPool.borrow()
+			val s9 = MysqlDaoSessionPool.borrow()
+			assert(s1.isRight)
+			assert(s2.isRight)
+			assert(s3.isRight)
+			assert(s4.isRight)
+			assert(s5.isRight)
+			assert(s6.isRight)
+			assert(s7.isRight)
+			assert(s8.isRight)
+			assert(s9.isRight)
+			logInfo("......................... pool overfool\n")
+			val sa = MysqlDaoSessionPool.borrow()
+			assert(sa.isLeft && sa.left.get.getMessage == "Db connection Pool filled")
+			logInfo("......................... clean up\n")
+			s1.right.get.close
+			s2.right.get.close
+			s3.right.get.close
+			s4.right.get.close
+			s5.right.get.close
+			s6.right.get.close
+			s7.right.get.close
+			s8.right.get.close
+			s9.right.get.close
+		})
+	}
+
 
 	
 	test("Test-trans-00-auto-commit") {
