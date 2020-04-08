@@ -19,7 +19,7 @@ class BaseConnectionPoolTest extends FunSuite with Logging {
 	props.setProperty("jdbcUrl", "jdbc:sqlite:db-test-03.db");
 	props.setProperty("autoCommit", "false");
 	props.setProperty("maximumPoolSize", "5");
-	val testPool = new HikariConnectionPool(props)
+	val testPool = new HikariDataSourcePool(props)
 
 	test("Test-DbConnection") {
 		logDebug("======== Test Creating session =============")

@@ -14,26 +14,40 @@ import java.sql.SQLException
 import org.scalactic.Fail
 import scala.util.Failure
 
-trait DatabaseConnectionPool {
+trait DataSourcePool {
 
 	def borrow(): Try[Connection]
+
+	def retrunBack(connection: Connection): Unit
+
+	def retrunBack(connection: Try[Connection]): Unit = connection match {
+		case Success(conn) => retrunBack(conn)
+		case _ => { /* do nothing */}
+	}
 }
 
 
-class HikariConnectionPool(val props: Properties) extends DatabaseConnectionPool with Logging {
+class HikariDataSourcePool(val props: Properties) extends DataSourcePool with Logging {
 
 	val cfg = new HikariConfig(props);
 	val ds = new HikariDataSource(cfg);
-
-	def borrow(): Try[Connection] = try {
-		Success(ds.getConnection())
-	} catch {
-		case e: SQLException => Failure(e)
+//	  val cfg = new HikariConfig();  
+//    cfg.setPoolName(getClass().getName());  
+//    cfg.setDriverClassName(driverClassName);  
+//    cfg.setJdbcUrl(url);  
+//    cfg.setUsername(username);  
+//    cfg.setPassword(password);  
+//    cfg.setMaximumPoolSize(maximumPoolSize);  
+//    cfg.setMaxLifetime(maxLifetime);  
+//    cfg.setConnectionTimeout(connectionTimeout);  
+//    cfg.setIdleTimeout(idleTimeout);  
+//    val ds = new HikariDataSource(jdbcConfig)
+	def borrow(): Try[Connection] = try Success(ds.getConnection()) catch {
+		case e: Exception => Failure(e)
 	}
-	
-	def retrunBack(connection: Try[Connection]): Unit = connection match {
-		case Success(conn) => conn.close()
-		case Failure(e) => { /* do nothing */}
+
+	def retrunBack(connection: Connection): Unit = {
+		if (!connection.isClosed) connection.close()
 	}
 		
 	

@@ -9,47 +9,48 @@ import jadeutils.common.EnvPropsComponent
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
 import org.junit.runner.RunWith
+import java.util.Properties
 
 object SqliteEnv {
 	val dbName = "db-test-01.db"
 	val tableName = "testuser"
+	val dbProps = new Properties();
+	dbProps.setProperty("dataSourceClassName", "org.sqlite.SQLiteDataSource");
+	dbProps.setProperty("jdbcUrl", "jdbc:sqlite:" + dbName);
+	dbProps.setProperty("autoCommit", "true");
+	dbProps.setProperty("maximumPoolSize", "10");
 
-	def testInEnv(opts: (Connection) => Unit) {
-		val sess = SqliteDaoSessionPool.current.right.get
-		val conn = sess.conn
-		val stat = conn.createStatement()
+	def testInEnv(opts: () => Unit) {
+		val conn = SqliteDataSourcePool.borrow().get
+//		val stat = conn.createStatement()
 		conn.prepareStatement( //
 			"drop table if exists " + SqliteEnv.tableName + "" //
 		).executeUpdate()
 		conn.prepareStatement( //
 			"create table " + SqliteEnv.tableName + " (id, name)" //
 		).executeUpdate()
-		opts(conn)
-		conn.prepareStatement( //
+		if (!conn.getAutoCommit) conn.commit()
+		SqliteDataSourcePool.retrunBack(conn)
+		opts()
+		val conn2 = SqliteDataSourcePool.borrow().get
+		conn2.prepareStatement( //
 			"drop table if exists " + SqliteEnv.tableName + "" //
 		).executeUpdate()
-		sess.close()
+		if (!conn2.getAutoCommit) conn2.commit()
+		SqliteDataSourcePool.retrunBack(conn2)
 	}
 }
 
-object SqliteDaoSessionPool extends DaoSessionPool(3, 10, 5) {
-	val defaultIsolation = TransIso.TS_SERIALIZABLE
+object SqliteDataSourcePool extends HikariDataSourcePool(SqliteEnv.dbProps) { }
 
-	def connectDB() = {
-		Class.forName("org.sqlite.JDBC")
-		Right(DriverManager.getConnection(
-			"jdbc:sqlite:" + SqliteEnv.dbName
-		))
-	}
-}
+object SqliteDataSourceHolder extends DataSourcetHolder(SqliteDataSourcePool, TransIso.TS_SERIALIZABLE)
 
 class User(val id: String, val name: String) {
 	override def toString: String = "{%s, %s}".format(id, name)
 }
 
-class UserSqliteDao(pool: DaoSessionPool) extends Dao[User, String] with Logging {
-	def session() = pool.current
-	def conn() = session.right.get.conn
+class UserSqliteDao(dataSource: DataSourcetHolder) extends Dao[User, String] with Logging {
+	def conn() = dataSource.connection
 
 	def getById(id: String): Option[User] = {
 		logTrace("before query")
@@ -57,7 +58,7 @@ class UserSqliteDao(pool: DaoSessionPool) extends Dao[User, String] with Logging
 			throw new RuntimeException("User id Cannot be null")
 		}
 		val result: Option[User] = {
-			val prep = conn.prepareStatement("select * from " + //
+			val prep = dataSource.connection.get.prepareStatement("select * from " + //
 					SqliteEnv.tableName + " where id = ? ")
 			prep.setString(1, id);
 			val rs = prep.executeQuery()
@@ -66,7 +67,7 @@ class UserSqliteDao(pool: DaoSessionPool) extends Dao[User, String] with Logging
 			} else None
 			logDebug("get user: {}", rec)
 			rs.close
-			session.right.get.close
+//			dataSource.retrunBack()   // TODO: 确认提交的逻辑
 			rec
 		}
 		logTrace("after query")
@@ -76,7 +77,7 @@ class UserSqliteDao(pool: DaoSessionPool) extends Dao[User, String] with Logging
 	def insert(model: User): Unit = {
 		logTrace("before insert")
 		val res = if (null != model && null != model.id) {
-			val prep = conn.prepareStatement( //
+			val prep = dataSource.connection.get.prepareStatement( //
 					"insert into " + SqliteEnv.tableName + " values (?, ?)")
 
 			prep.setString(1, model.id);
@@ -84,7 +85,7 @@ class UserSqliteDao(pool: DaoSessionPool) extends Dao[User, String] with Logging
 			prep.addBatch();
 
 			prep.executeBatch()
-			session.right.get.close
+//			dataSource.retrunBack() // TODO: 确认提交的逻辑
 		} else throw new RuntimeException("Exception for Text")
 		logTrace("after insert")
 	}
@@ -95,109 +96,115 @@ class UserSqliteDao(pool: DaoSessionPool) extends Dao[User, String] with Logging
 class SqliteDaoTest extends FunSuite with Logging {
 
 	test("Test-session-pool-00-get-session") {
-		SqliteEnv.testInEnv((conn) => {
+		SqliteEnv.testInEnv(() => {
 			logInfo("......................... create new session\n")
-			val s1 = SqliteDaoSessionPool.borrow()
-			assert(s1.isRight)
-			s1.right.get.close
+			val s1 = SqliteDataSourcePool.borrow()
+			assert(s1.isSuccess)
+			SqliteDataSourcePool.retrunBack(s1)
 		})
 	}
 
 	test("Test-session-pool-01-re-use-session") {
-		SqliteEnv.testInEnv((conn) => {
+		SqliteEnv.testInEnv(() => {
 			logInfo("......................... create new session\n")
-			val s1 = SqliteDaoSessionPool.borrow()
-			val s2 = SqliteDaoSessionPool.borrow()
-			val s3 = SqliteDaoSessionPool.borrow()
-			assert(s1.isRight)
-			assert(s2.isRight)
-			assert(s3.isRight)
+			val s1 = SqliteDataSourcePool.borrow()
+			val s2 = SqliteDataSourcePool.borrow()
+			val s3 = SqliteDataSourcePool.borrow()
+			assert(s1.isSuccess)
+			assert(s2.isSuccess)
+			assert(s3.isSuccess)
 			logInfo("......................... close session\n")
-			s1.right.get.close
-			s2.right.get.close
-			s3.right.get.close
+			SqliteDataSourcePool.retrunBack(s1)
+			SqliteDataSourcePool.retrunBack(s2)
+			SqliteDataSourcePool.retrunBack(s3)
 			logInfo("......................... re-use in pool\n")
-			val s4 = SqliteDaoSessionPool.borrow()
-			val s5 = SqliteDaoSessionPool.borrow()
-			val s6 = SqliteDaoSessionPool.borrow()
-			assert(s4.isRight)
-			assert(s5.isRight)
-			assert(s6.isRight)
+			val s4 = SqliteDataSourcePool.borrow()
+			val s5 = SqliteDataSourcePool.borrow()
+			val s6 = SqliteDataSourcePool.borrow()
+			assert(s4.isSuccess)
+			assert(s5.isSuccess)
+			assert(s6.isSuccess)
 			logInfo("......................... close again\n")
-			s4.right.get.close
-			s5.right.get.close
-			s6.right.get.close
+			SqliteDataSourcePool.retrunBack(s4)
+			SqliteDataSourcePool.retrunBack(s5)
+			SqliteDataSourcePool.retrunBack(s6)
 		})
 	}
 
 	test("Test-session-pool-02-pool-is-full") {
-		SqliteEnv.testInEnv((conn) => {
+		SqliteEnv.testInEnv(() => {
 			logInfo("......................... create new session\n")
-			val s1 = SqliteDaoSessionPool.borrow()
-			val s2 = SqliteDaoSessionPool.borrow()
-			val s3 = SqliteDaoSessionPool.borrow()
-			val s4 = SqliteDaoSessionPool.borrow()
-			val s5 = SqliteDaoSessionPool.borrow()
-			val s6 = SqliteDaoSessionPool.borrow()
-			val s7 = SqliteDaoSessionPool.borrow()
-			val s8 = SqliteDaoSessionPool.borrow()
-			val s9 = SqliteDaoSessionPool.borrow()
-			assert(s1.isRight)
-			assert(s2.isRight)
-			assert(s3.isRight)
-			assert(s4.isRight)
-			assert(s5.isRight)
-			assert(s6.isRight)
-			assert(s7.isRight)
-			assert(s8.isRight)
-			assert(s9.isRight)
+			val s0 = SqliteDataSourcePool.borrow()
+			val s1 = SqliteDataSourcePool.borrow()
+			val s2 = SqliteDataSourcePool.borrow()
+			val s3 = SqliteDataSourcePool.borrow()
+			val s4 = SqliteDataSourcePool.borrow()
+			val s5 = SqliteDataSourcePool.borrow()
+			val s6 = SqliteDataSourcePool.borrow()
+			val s7 = SqliteDataSourcePool.borrow()
+			val s8 = SqliteDataSourcePool.borrow()
+			val s9 = SqliteDataSourcePool.borrow()
+			assert(s0.isSuccess)
+			assert(s1.isSuccess)
+			assert(s2.isSuccess)
+			assert(s3.isSuccess)
+			assert(s4.isSuccess)
+			assert(s5.isSuccess)
+			assert(s6.isSuccess)
+			assert(s7.isSuccess)
+			assert(s8.isSuccess)
+			assert(s9.isSuccess)
 			// 最大10个连接，外层的的`testInEnv()`建了一个，
 			// 加上这里建立的9个，已经满了
 			logInfo("......................... pool overfool\n")
-			val sa = SqliteDaoSessionPool.borrow()
-			assert(sa.isLeft && sa.left.get.getMessage == "Db connection Pool filled")
+			val sa = SqliteDataSourcePool.borrow()
+			assert(sa.isFailure)
 			logInfo("......................... clean up\n")
-			s1.right.get.close
-			s2.right.get.close
-			s3.right.get.close
-			s4.right.get.close
-			s5.right.get.close
-			s6.right.get.close
-			s7.right.get.close
-			s8.right.get.close
-			s9.right.get.close
+			SqliteDataSourcePool.retrunBack(s1)
+			SqliteDataSourcePool.retrunBack(s2)
+			SqliteDataSourcePool.retrunBack(s3)
+			SqliteDataSourcePool.retrunBack(s4)
+			SqliteDataSourcePool.retrunBack(s5)
+			SqliteDataSourcePool.retrunBack(s6)
+			SqliteDataSourcePool.retrunBack(s7)
+			SqliteDataSourcePool.retrunBack(s8)
+			SqliteDataSourcePool.retrunBack(s9)
 		})
 	}
 
 	test("Test-trans-00-auto-commit") {
-		SqliteEnv.testInEnv((conn) => {
+		SqliteEnv.testInEnv(() => {
 			logInfo("------------------------test auto commit\n")
-			val dao = new UserSqliteDao(SqliteDaoSessionPool)
+			val dao = new UserSqliteDao(SqliteDataSourceHolder)
 			val user = new User("1", "jade")
-			conn.setAutoCommit(true)
+			SqliteDataSourceHolder.connection.get.setAutoCommit(true)
 			dao.insert(user)
+			SqliteDataSourceHolder.retrunBack()
 			logInfo("--------userid {} is {}", user.id, dao.getById(user.id).get)
+			SqliteDataSourceHolder.retrunBack()
 		})
 	}
 
 	test("Test-trans-01-manual-commit") {
-		SqliteEnv.testInEnv((conn) => {
+		SqliteEnv.testInEnv(() => {
 			logInfo("------------------------test manual commit\n")
-			val dao = new UserSqliteDao(SqliteDaoSessionPool)
+			val dao = new UserSqliteDao(SqliteDataSourceHolder)
 			val user = new User("1", "jade")
-			conn.setAutoCommit(false)
+			SqliteDataSourceHolder.connection.get.setAutoCommit(false)
 			dao.insert(user)
-			conn.commit();
+			SqliteDataSourceHolder.connection.get.commit();
+			SqliteDataSourceHolder.retrunBack()
 			logInfo("--------userid {} is {}", user.id, dao.getById(user.id).get)
+			SqliteDataSourceHolder.retrunBack()
 		})
 	}
 	
 	
 	test("Test-trans-02-rollback-manual") {
-		SqliteEnv.testInEnv((conn) => {
+		SqliteEnv.testInEnv(() => {
 			logInfo("------------------------test rollback manual\n")
-			val dao = new UserSqliteDao(SqliteDaoSessionPool)
-			conn.setAutoCommit(false)
+			val dao = new UserSqliteDao(SqliteDataSourceHolder)
+			SqliteDataSourceHolder.connection.get.setAutoCommit(false)
 			dao.insert(new User("1", "jade"))
 			dao.insert(new User("2", "yun"))
 			dao.insert(new User("3", "wendy"))
@@ -208,20 +215,21 @@ class SqliteDaoTest extends FunSuite with Logging {
 			assert("wendy"    == dao.getById("3").get.name)
 			assert("wen"       == dao.getById("4").get.name)
 			assert("tiantian" == dao.getById("5").get.name)
-			conn.rollback()
+			SqliteDataSourceHolder.connection.get.rollback()
 			assert(dao.getById("1").isEmpty)
 			assert(dao.getById("2").isEmpty)
 			assert(dao.getById("3").isEmpty)
 			assert(dao.getById("4").isEmpty)
 			assert(dao.getById("5").isEmpty)
+			SqliteDataSourceHolder.retrunBack()
 		})
 	}
 	
 	test("Test-trans-03-rollback-by-exception") {
-		SqliteEnv.testInEnv((conn) => {
+		SqliteEnv.testInEnv(() => {
 			logInfo("------------------------test rollback by exception\n")
-			val dao = new UserSqliteDao(SqliteDaoSessionPool)
-			conn.setAutoCommit(false)
+			val dao = new UserSqliteDao(SqliteDataSourceHolder)
+			SqliteDataSourceHolder.connection.get.setAutoCommit(false)
 			dao.insert(new User("1", "jade"))
 			dao.insert(new User("2", "yun"))
 			dao.insert(new User("3", "wendy"))
@@ -233,19 +241,22 @@ class SqliteDaoTest extends FunSuite with Logging {
 			intercept[java.lang.RuntimeException] {
 				try {
 					dao.insert(new User(null, "tiantian"))
-				} catch {
-					case e: RuntimeException => if (!conn.getAutoCommit) {
-						conn.rollback();
+				} catch { case e: RuntimeException => 
+					if (!SqliteDataSourceHolder.connection.get.getAutoCommit) {
+						SqliteDataSourceHolder.connection.get.rollback();
 						throw e
 					}
 				}
 			}
-			if (!conn.getAutoCommit) { conn.commit() }
+			if (!SqliteDataSourceHolder.connection.get.getAutoCommit) { 
+				SqliteDataSourceHolder.connection.get.commit() 
+			}
 			assert(dao.getById("1").isEmpty)
 			assert(dao.getById("2").isEmpty)
 			assert(dao.getById("3").isEmpty)
 			assert(dao.getById("4").isEmpty)
 			assert(dao.getById("5").isEmpty)
+			SqliteDataSourceHolder.retrunBack()
 		})
 	}
 

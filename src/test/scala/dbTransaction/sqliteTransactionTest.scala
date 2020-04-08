@@ -11,12 +11,15 @@ import org.scalatest.FunSuite
 import org.junit.runner.RunWith
 
 class TestSqliteService extends BaseTransactionService {
-	val daoSessPool = SqliteDaoSessionPool
+	
+  def transactionName(): String = "TestSqliteService"
+
+  val dataSource: DataSourcetHolder = SqliteDataSourceHolder
 }
 
 object UserSqliteService extends TestSqliteService {
 
-	private val dao = new UserSqliteDao(daoSessPool)
+	private val dao = new UserSqliteDao(SqliteDataSourceHolder)
 
 	def getUser(id: String): Option[User] = withTransaction { dao.getById(id) }
 
@@ -33,7 +36,7 @@ object UserSqliteService extends TestSqliteService {
 class SqliteTransactionTest extends FunSuite with Logging {
 
 	test("Test-trans-00-trans-commit") {
-		SqliteEnv.testInEnv((conn) => {
+		SqliteEnv.testInEnv(() => {
 			logInfo("------------------------test auto commit\n")
 			val user = new User("1", "jade")
 			UserSqliteService.insertUser(user)
@@ -44,7 +47,7 @@ class SqliteTransactionTest extends FunSuite with Logging {
 	} 
 
 	test("Test-trans-01-rollback-by-exception") {
-		SqliteEnv.testInEnv((conn) => {
+		SqliteEnv.testInEnv(() => {
 			logInfo("------------------------test rollback by exception\n")
 			UserSqliteService.insertUserList(new User("1", "jade") ::
 					new User("2", "yun") :: new User("3", "wendy") ::
