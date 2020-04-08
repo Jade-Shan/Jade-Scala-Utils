@@ -55,6 +55,9 @@ class BaseConnectionPoolTest extends FunSuite with Logging {
 		intercept[java.sql.SQLTransientConnectionException] {
 			val c9 = testPool.getConnection()
 		}
+		c6.close()
+		c7.close()
+		c8.close()
 	}
 
 }
