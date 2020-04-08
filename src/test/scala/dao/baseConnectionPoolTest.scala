@@ -34,12 +34,6 @@ class BaseConnectionPoolTest extends FunSuite with Logging {
 		c3.close()
 		c4.close()
 		c5.close()
-		logDebug("======== Test Open Agan =============")
-		val c6 = testPool.getConnection()
-		val c7 = testPool.getConnection()
-		val c8 = testPool.getConnection()
-		val c9 = testPool.getConnection()
-		val ca = testPool.getConnection()
 	}
 
 	test("Test-Pool-Size") {
