@@ -19,7 +19,7 @@ class BaseConnectionPoolTest extends FunSuite with Logging {
 	props.setProperty("jdbcUrl", "jdbc:sqlite:db-test-03.db");
 	props.setProperty("autoCommit", "false");
 	props.setProperty("maximumPoolSize", "5");
-	val testPool = new ConnectionPool(props)
+	val testPool = new HikariConnectionPool(props)
 
 	test("Test-DbConnection") {
 		logDebug("======== Test Creating session =============")
@@ -34,18 +34,32 @@ class BaseConnectionPoolTest extends FunSuite with Logging {
 		c3.close()
 		c4.close()
 		c5.close()
+		logDebug("======== Test Open Agan =============")
+		val c6 = testPool.getConnection()
+		val c7 = testPool.getConnection()
+		val c8 = testPool.getConnection()
+		val c9 = testPool.getConnection()
+		val ca = testPool.getConnection()
 	}
 
 	test("Test-Pool-Size") {
+		logDebug("====Test Creating session =====")
+		val c1 = testPool.getConnection()
+		val c2 = testPool.getConnection()
+		val c3 = testPool.getConnection()
+		val c4 = testPool.getConnection()
+		val c5 = testPool.getConnection()
+		logDebug("====Test Closing session ======")
+		c1.close()
+		c2.close()
+		c3.close()
+		logDebug("====Test Open Agan ============")
+		val c6 = testPool.getConnection()
+		val c7 = testPool.getConnection()
+		val c8 = testPool.getConnection()
+		logDebug("====pool should fulled ========")
 		intercept[java.sql.SQLTransientConnectionException] {
-			logDebug("======== Test Creating session =============")
-			val c1 = testPool.getConnection()
-			val c2 = testPool.getConnection()
-			val c3 = testPool.getConnection()
-			val c4 = testPool.getConnection()
-			val c5 = testPool.getConnection()
-			logDebug("======== pool should fulled =============")
-			val c6 = testPool.getConnection()
+			val c9 = testPool.getConnection()
 		}
 	}
 

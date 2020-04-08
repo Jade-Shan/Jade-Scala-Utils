@@ -7,8 +7,15 @@ import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.util.DriverDataSource;
 
 import jadeutils.common.Logging
+import java.sql.Connection
 
-class ConnectionPool(val props: Properties) extends Logging {
+trait DatabaseConnectionPool {
+
+	def getConnection(): Connection
+}
+
+
+class HikariConnectionPool(val props: Properties) extends DatabaseConnectionPool with Logging {
 
 	val cfg = new HikariConfig(props);
 	val ds = new HikariDataSource(cfg);
