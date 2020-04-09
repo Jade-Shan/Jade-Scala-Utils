@@ -31,7 +31,7 @@ class HikariDataSourcePool(val props: Properties) extends DataSourcePool with Lo
 
 	val cfg = new HikariConfig(props);
 	val ds = new HikariDataSource(cfg);
-//	  val cfg = new HikariConfig();  
+	  val cfg2 = new HikariConfig();  
 //    cfg.setPoolName(getClass().getName());  
 //    cfg.setDriverClassName(driverClassName);  
 //    cfg.setJdbcUrl(url);  

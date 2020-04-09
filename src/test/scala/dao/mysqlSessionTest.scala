@@ -11,7 +11,7 @@ import org.scalatest.FunSuite
 import org.junit.runner.RunWith
 import java.util.Properties
 
-object MysqlEnv {
+object MysqlEnv extends Logging {
 	val dbName = "db-test-01"
 	val tableName = "testuser"
 	val dbProps = new Properties();
@@ -21,11 +21,13 @@ object MysqlEnv {
 	dbProps.setProperty("username", "devuser");
 	dbProps.setProperty("password", "devuser");
 	dbProps.setProperty("autoCommit", "true");
-	dbProps.setProperty("maximumPoolSize", "11");
+	dbProps.setProperty("maximumPoolSize", "10");
 
 
 	def testInEnv(opts: () => Unit) {
+		logDebug("----------------before init test table")
 		val conn = MysqlDataSourcePool.borrow().get
+		conn.setAutoCommit(true)
 		conn.prepareStatement(//
 				"drop table if exists " + MysqlEnv.tableName + "" //
 			).executeUpdate();
@@ -34,15 +36,20 @@ object MysqlEnv {
 			"(`id` INT NOT NULL, `name` VARCHAR(45) default '', PRIMARY KEY (`id`)) " + //
 			" ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4"
 		).executeUpdate();
-		if (!conn.getAutoCommit) conn.commit()
+		// if (!conn.getAutoCommit) conn.commit()
 		MysqlDataSourcePool.retrunBack(conn)
-		val conn2 = MysqlDataSourcePool.borrow().get
+		logDebug("----------------after init test table")
 		opts()
+		logDebug("----------------before clean test table")
+		val conn2 = MysqlDataSourcePool.borrow().get
+		conn2.setAutoCommit(true)
 		conn2.prepareStatement(//
 				"drop table if exists " + MysqlEnv.tableName + ""//
 			).executeUpdate();
-		if (!conn2.getAutoCommit) conn2.commit()
+		// if (!conn2.getAutoCommit) conn2.commit()
 		MysqlDataSourcePool.retrunBack(conn2)
+		logDebug("----------------after clean test table")
+		logDebug("----------------test-env cleanup")
 	}
 }
 
@@ -128,12 +135,13 @@ class MySqlDaoTest extends FunSuite with Logging {
 			MysqlDataSourcePool.retrunBack(s4)
 			MysqlDataSourcePool.retrunBack(s5)
 			MysqlDataSourcePool.retrunBack(s6)
+			logInfo("......................... all closed\n")
 		})
 	}
 
 	test("Test-session-pool-02-pool-is-full") {
 		MysqlEnv.testInEnv(() => {
-			logInfo("......................... create new session\n")
+			logDebug("......................... before create new session\n")
 			val s0 = MysqlDataSourcePool.borrow()
 			val s1 = MysqlDataSourcePool.borrow()
 			val s2 = MysqlDataSourcePool.borrow()
@@ -144,6 +152,7 @@ class MySqlDaoTest extends FunSuite with Logging {
 			val s7 = MysqlDataSourcePool.borrow()
 			val s8 = MysqlDataSourcePool.borrow()
 			val s9 = MysqlDataSourcePool.borrow()
+			logDebug("......................... after create new session\n")
 			assert(s0.isSuccess)
 			assert(s1.isSuccess)
 			assert(s2.isSuccess)
@@ -154,10 +163,12 @@ class MySqlDaoTest extends FunSuite with Logging {
 			assert(s7.isSuccess)
 			assert(s8.isSuccess)
 			assert(s9.isSuccess)
-			logInfo("......................... pool overfool\n")
+			logDebug("......................... before pool overfool\n")
 			val sa = MysqlDataSourcePool.borrow()
+			logDebug("......................... after pool overfool\n")
 			assert(sa.isFailure)
-			logInfo("......................... clean up\n")
+			logDebug("......................... clean up\n")
+			MysqlDataSourcePool.retrunBack(s0)
 			MysqlDataSourcePool.retrunBack(s1)
 			MysqlDataSourcePool.retrunBack(s2)
 			MysqlDataSourcePool.retrunBack(s3)
@@ -170,24 +181,22 @@ class MySqlDaoTest extends FunSuite with Logging {
 		})
 	}
 
-
-	
 	test("Test-trans-00-auto-commit") {
 		MysqlEnv.testInEnv(() => {
-			logInfo("------------------------test auto commit\n")
+			logDebug("------------------------test auto commit\n")
 			val dao = new UserMysqlDao(MysqlDataSourceHolder)
 			val user = new User("1", "jade")
 			MysqlDataSourceHolder.connection().get.setAutoCommit(true)
 			dao.insert(user)
 			MysqlDataSourceHolder.retrunBack()
-			logInfo("--------userid {} is {}", user.id, dao.getById(user.id).get.name)
+			logDebug("--------userid {} is {}", user.id, dao.getById(user.id).get.name)
 			MysqlDataSourceHolder.retrunBack()
 		})
 	}
 	
 	test("Test-trans-01-manual-commit") {
 		MysqlEnv.testInEnv(() => {
-			logInfo("------------------------test manual commit\n")
+			logDebug("------------------------test manual commit\n")
 			val dao = new UserMysqlDao(MysqlDataSourceHolder)
 			val user = new User("1", "jade")
 			MysqlDataSourceHolder.connection().get.setAutoCommit(false)
@@ -195,14 +204,14 @@ class MySqlDaoTest extends FunSuite with Logging {
 			dao.insert(user)
 			MysqlDataSourceHolder.connection().get.commit(); 
 			MysqlDataSourceHolder.retrunBack()
-			logInfo("--------userid {} is {}", user.id, dao.getById(user.id).get.name)
+			logDebug("--------userid {} is {}", user.id, dao.getById(user.id).get.name)
 			MysqlDataSourceHolder.retrunBack()
 		})
 	}
 
 	test("Test-trans-02-rollback-manual") {
 		MysqlEnv.testInEnv(() => {
-			logInfo("------------------------test rollback manual\n")
+			logDebug("------------------------test rollback manual\n")
 			val dao = new UserMysqlDao(MysqlDataSourceHolder)
 			MysqlDataSourceHolder.connection().get.setAutoCommit(false)
 			dao.insert(new User("1", "jade"))
@@ -210,8 +219,8 @@ class MySqlDaoTest extends FunSuite with Logging {
 			MysqlDataSourceHolder.connection().get.commit()
 			dao.insert(new User("3", "wendy"))
 			dao.insert(new User("4", "wen"))
-			logInfo("--------userid {} is {}", "3", dao.getById("3").get.name)
-			logInfo("--------userid {} is {}", "4", dao.getById("4").get.name)
+			logDebug("--------userid {} is {}", "3", dao.getById("3").get.name)
+			logDebug("--------userid {} is {}", "4", dao.getById("4").get.name)
 			assert("wendy"    == dao.getById("3").get.name)
 			assert("wen"      == dao.getById("4").get.name)
 			MysqlDataSourceHolder.connection().get.rollback()
@@ -235,7 +244,6 @@ class MySqlDaoTest extends FunSuite with Logging {
 			MysqlDataSourceHolder.connection().get.setAutoCommit(false)
 			dao.insert(new User("1", "jade"))
 			dao.insert(new User("2", "yun"))
-			if (!MysqlDataSourceHolder.connection().get.getAutoCommit) { MysqlDataSourceHolder.connection().get.commit(); }
 			val savepoint = MysqlDataSourceHolder.connection().get.setSavepoint("" + System.currentTimeMillis())
 			dao.insert(new User("3", "wendy"))
 			dao.insert(new User("4", "wen"))
@@ -251,7 +259,8 @@ class MySqlDaoTest extends FunSuite with Logging {
 			assert(true       == dao.getById("3").isEmpty)
 			assert(true       == dao.getById("4").isEmpty)
 			assert("tiantian" == dao.getById("5").get.name)
-			if (!MysqlDataSourceHolder.connection().get.getAutoCommit) { MysqlDataSourceHolder.connection().get.commit(); }
+			MysqlDataSourceHolder.connection().get.commit()
+			MysqlDataSourceHolder.retrunBack()
 		})
 	}
 	
@@ -267,24 +276,25 @@ class MySqlDaoTest extends FunSuite with Logging {
 			assert("jade"  == dao.getById("1").get.name)
 			assert("yun"   == dao.getById("2").get.name)
 			assert("wendy" == dao.getById("3").get.name)
-			assert("wen"    == dao.getById("4").get.name)
+			assert("wen"   == dao.getById("4").get.name)
 			//
 			intercept[java.lang.RuntimeException] {
 				try {
 					dao.insert(new User(null, "tiantian"))
 				} catch {
-					case e: RuntimeException => if (!MysqlDataSourceHolder.connection().get.getAutoCommit) {
+					case e: RuntimeException => {
 						MysqlDataSourceHolder.connection().get.rollback();
 						throw e
 					}
 				}
 			}
-			if (!MysqlDataSourceHolder.connection().get.getAutoCommit) { MysqlDataSourceHolder.connection().get.commit(); }
+			MysqlDataSourceHolder.connection().get.commit()
 			assert(dao.getById("1").isEmpty)
 			assert(dao.getById("2").isEmpty)
 			assert(dao.getById("3").isEmpty)
 			assert(dao.getById("4").isEmpty)
 			assert(dao.getById("5").isEmpty)
+			MysqlDataSourceHolder.retrunBack()
 		})
 	}
 

@@ -11,7 +11,7 @@ import org.scalatest.FunSuite
 import org.junit.runner.RunWith
 import java.util.Properties
 
-object SqliteEnv {
+object SqliteEnv extends Logging {
 	val dbName = "db-test-01.db"
 	val tableName = "testuser"
 	val dbProps = new Properties();

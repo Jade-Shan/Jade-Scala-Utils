@@ -168,6 +168,12 @@
 		<appender-ref ref="APD-TRACE-CSL" />
 		<appender-ref ref="APD-TRACE-FILE" />
 	</logger>
+	
+	<logger level="TRACE" name="com.zaxxer.hikari" > 
+		<appender-ref ref="APD-TRACE-CSL" />
+		<appender-ref ref="APD-TRACE-FILE" />
+	</logger>
+	
 
 	<!-- show parameters for hibernate sql 专为 Hibernate 定制 --> 
 	<!--
