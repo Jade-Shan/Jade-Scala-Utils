@@ -137,89 +137,13 @@ class DataSourcetHolder(val pool: DataSourcePool, val defaultIsolation: TransIso
 		} else Failure(new SQLException("no db connection"))
 	} else Success(resource.get)
 	
+	private[this] val localTransaction = new ThreadLocal[TransactionStack] {
+		override def initialValue(): TransactionStack = new TransactionStack("datasource")
+	}
+	
+	def transaction() = localTransaction.get
 }	
 	
-//abstract class DaoSessionPool(val minPoolSize: Int, val maxPoolSize: Int, val initPoolSize: Int //
-//) extends Logging //
-//{
-//	import jadeutils.comm.dao.TransIso.TransIso
-//	val defaultIsolation: TransIso
-//
-//	private[this] var idleSess = List[DaoSession]()
-//	private[this] var actvSess = Map[String, DaoSession]()
-//	private[this] def size() = idleSess.size + actvSess.size
-//	private[this] var currSess = new ThreadLocal[DaoSession]
-//
-//	def this() = this(20, 50, 20)
-//
-//	// 创建JDBC连接
-//	protected[this] def connectDB(): Either[RuntimeException, java.sql.Connection]
-//
-//	def current: Either[RuntimeException, DaoSession] = {
-//		var s = currSess.get
-//		if (null == s) borrow() else if (!s.isBroken()) Right(s) else {
-//			currSess.get.close
-//			borrow()
-//		}
-//	}
-//
-//	/**
-//	 * 从连接池中拿一个可用的会话
-//	 */
-//	def borrow(): Either[RuntimeException, DaoSession] = {
-//		def getAvaliable(): Either[RuntimeException, DaoSession] = {
-//			val sess = if (idleSess.size < 1) {
-//				// 没有空闲的连接就新建一个
-//				val dbConn = connectDB()
-//				if (dbConn.isLeft) Left(dbConn.left.get)
-//				else Right(new DaoSession("" + size, dbConn.right.get, this))
-//			} else {
-//				// 有空闲的连接就取一个
-//				var first = idleSess.head
-//				idleSess = idleSess.tail
-//				Right(first)
-//			}
-//			// drop borken session, find next idle session
-//			if (sess.isRight && !sess.right.get.isBroken()) sess else getAvaliable()
-//		}
-//		if (size >= maxPoolSize) {
-//			logError("DaoSession pool is full: idle:{} + active:{} = count:{}, max:{}",
-//				idleSess.size, actvSess.size, size, maxPoolSize)
-//			Left(new RuntimeException("Db connection Pool filled"))
-//		} else {
-//			logTrace("DaoSession pool size : idle:{} + active:{} = count:{}, max:{}", 
-//					idleSess.size, actvSess.size, size,  maxPoolSize)
-//			val pse = getAvaliable() // 取一个可用的连接
-//			if (pse.isLeft) pse else {
-//				val sess = pse.right.get
-//				actvSess = actvSess + (sess.id -> sess)
-//				currSess.set(sess)
-//				logTrace("After borrow: pool size : idle:{} + active:{} " + //
-//					"= count:{}, max:{}\ncurr:{}\nactive: {}\nidle: {}", //
-//					idleSess.size, actvSess.size, size, maxPoolSize, //
-//					currSess.get, actvSess, idleSess)
-//				Right(sess)
-//			}
-//		}
-//	}
-//
-//	/**
-//	 * 查询完成，放回连接池
-//	 */
-//	def returnBack(sess: DaoSession) {
-//		if (actvSess.contains(sess.id) && !actvSess.get(sess.id).get.isInTransaction()) {
-//			actvSess = actvSess - sess.id
-//			idleSess = sess :: idleSess
-//			currSess.remove()
-//		}
-//		logTrace("After return: pool size : idle:{} + active:{} " + //
-//					"= count:{}, max:{}\ncurr:{}\nactive: {}\nidle: {}", //
-//					idleSess.size, actvSess.size, size, maxPoolSize, //
-//					currSess.get, actvSess, idleSess)
-//	}
-//
-//}
-
 abstract class BaseTransactionService extends Logging {
 	import scala.reflect.runtime.universe.Type
 	import scala.reflect.runtime.universe.typeOf
@@ -228,9 +152,8 @@ abstract class BaseTransactionService extends Logging {
 	import jadeutils.comm.dao.TransIso._
 
 	protected val dataSource: DataSourcetHolder
-	private[this] val transaction = new ThreadLocal[TransactionStack]
-	def transactionName(): String
-	transaction.set(new TransactionStack(transactionName()))
+	
+	def transaction = dataSource.transaction()
 
 	@throws(classOf[Throwable])
 	def withTransaction[T](nesting: TransNesting, iso: TransIso)(callFunc: => T)(implicit m: TypeTag[T]): T = //
@@ -293,16 +216,16 @@ abstract class BaseTransactionService extends Logging {
 	private[this] def endTransNesting[T](callRes: Try[T])(implicit m: TypeTag[T]): Try[T] = {
 		val conn = dataSource.connection().get
 		logTrace("before trans end, call-func-result is {}: ", callRes)
-		val currTransLayer = transaction.get.pop// 弹出当前一层事务
+		val currTransLayer = transaction.pop// 弹出当前一层事务
 		logTrace("remove Trans on connection, trans id: {}, conn: {} auto-commit:{} , iso: {}", //
 				currTransLayer, dataSource.isBroken(), conn.getAutoCommit)
 
 		val transResult: Try[T] = currTransLayer match {
 			case Some(l: NewTransactionLayer) => callRes match {
 				case s: Success[T] => { // 新事务，成功后提交修改
-					logTrace("Call Func Success, start commit transaction manually: {}", transaction.get.name)
+					logTrace("Call Func Success, start commit transaction manually: {}", transaction.name)
 					conn.commit()
-					logTrace("Call Func Success, commit transaction manually success: {}", transaction.get.name)
+					logTrace("Call Func Success, commit transaction manually success: {}", transaction.name)
 					callRes
 				}
 				case Failure(f) => { // 新事务，失败后直接回滚。不让错误传播到外层
@@ -315,39 +238,39 @@ abstract class BaseTransactionService extends Logging {
 			}
 			case Some(l: JoinLastTransaction) => callRes match {
 				case s: Success[T] => { // 外层事务，成功后不提交，等待外层事务完成一同提交
-					logTrace("Call Func Success, retrun outter transaction : S: {}", transaction.get)
+					logTrace("Call Func Success, retrun outter transaction : S: {}", transaction)
 					callRes
 				}
 				case Failure(f) => { // 外层事务，失败后不回滚，报错给外层事务一同回滚
-					logTrace("Call Func Err, need rollback outter transaction : S: {}", transaction.get)
+					logTrace("Call Func Err, need rollback outter transaction : S: {}", transaction)
 					callRes
 				}
 			}
 			case Some(_) => callRes match { // 不支持的事务，作为当作外层事务处理
 				case s: Success[T] => {
-					logTrace("Call Func Success, not in transaction: S: {}", transaction.get)
+					logTrace("Call Func Success, not in transaction: S: {}", transaction)
 					callRes
 				}
 				case Failure(f) => {
-					logTrace("Call Func Err, need rollback outter transaction : S: {}", transaction.get)
+					logTrace("Call Func Err, need rollback outter transaction : S: {}", transaction)
 					callRes
 				}
 			}
 			case None => callRes match {
 				case s: Success[T] => { // 没有事务，按自动提交操作
-					logTrace("Call Func Success, not in transaction: S: {}", transaction.get)
+					logTrace("Call Func Success, not in transaction: S: {}", transaction)
 					if (conn.getAutoCommit) { conn.commit() }
 					callRes
 				}
 				case Failure(f) => {
-					logTrace("Call Func Err, not in transaction so no rollback: S: {}", transaction.get)
+					logTrace("Call Func Err, not in transaction so no rollback: S: {}", transaction)
 					Success(generateDefaultResult(typeOf[T]).asInstanceOf[T])
 				}
 			}
 		}
 
-		logTrace("resume outter layer trans, autosave: {} ", !transaction.get.isInTransaction)
-		conn.setAutoCommit(!transaction.get.isInTransaction) // 恢复外层事务
+		logTrace("resume outter layer trans, autosave: {} ", !transaction.isInTransaction)
+		conn.setAutoCommit(!transaction.isInTransaction) // 恢复外层事务
 
 		transResult
 	}
@@ -363,15 +286,15 @@ abstract class BaseTransactionService extends Logging {
 
 		logTrace("warpping transaction layer: {}", nesting)
 		val currLayer:Try[TransactionLayer] = nesting match {
-			case TS_PG_NEVER => if (transaction.get.isInTransaction) {
+			case TS_PG_NEVER => if (transaction.isInTransaction) {
 				// PROPAGATION_NEVER -- 以非事务方式执行，如果当前存在事务，则抛出异常。
 				Failure(new RuntimeException("Expect not in any transaction"))
 			} else Success(new NoTransactionLayer)
-			case TS_PG_MANDATORY => if (transaction.get.isInTransaction) {
+			case TS_PG_MANDATORY => if (transaction.isInTransaction) {
 				// PROPAGATION_MANDATORY -- 支持当前事务，如果当前没有事务，就抛出异常。
 				Success(new JoinLastTransaction)
 			} else Failure(new RuntimeException("Expect in transaction but not"))
-			case TS_PG_REQUIRED => if (transaction.get.isInTransaction) {
+			case TS_PG_REQUIRED => if (transaction.isInTransaction) {
 				// PROPAGATION_REQUIRED -- 支持当前事务，如果当前没有事务，就新建一个事务。这是最常见的选择。
 				Success(new JoinLastTransaction)
 			} else Success(new NewTransactionLayer(createSavepoint))
@@ -380,7 +303,7 @@ abstract class BaseTransactionService extends Logging {
 				// 如果当前没有事务，则进行与PROPAGATION_REQUIRED类似的操作。
 				Success(new NewTransactionLayer(createSavepoint))
 			}
-			case TS_PG_SUPPORTS => if (transaction.get.isInTransaction) {
+			case TS_PG_SUPPORTS => if (transaction.isInTransaction) {
 				// PROPAGATION_SUPPORTS -- 支持当前事务，如果当前没有事务，就以非事务方式执行。
 				Success(new JoinLastTransaction)
 			} else Success(new NoTransactionLayer)
@@ -396,16 +319,16 @@ abstract class BaseTransactionService extends Logging {
 		}
 
 		if (currLayer.isSuccess) {
-			transaction.get.push(currLayer.get)	
+			transaction.push(currLayer.get)	
 		} else throw currLayer.failed.get 
 
-		val needAutoCommit = !transaction.get.isInTransaction
+		val needAutoCommit = !transaction.isInTransaction
 
 		val conn = dataSource.connection().get
 		conn.setTransactionIsolation(iso.id)
 		conn.setAutoCommit(needAutoCommit)
 		logTrace("   add Trans on connection, conn:{}, auto-commit:{}, iso:{}, transaction:{}", //
-				dataSource, conn.getAutoCommit, iso, transaction.get)
+				dataSource, conn.getAutoCommit, iso, transaction)
 	}
 
 	private[this] def generateDefaultResult(m: Type): Any = m match {
