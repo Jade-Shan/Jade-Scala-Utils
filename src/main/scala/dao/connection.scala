@@ -11,7 +11,6 @@ import java.sql.Connection
 import scala.util.Try
 import scala.util.Success
 import java.sql.SQLException
-import org.scalactic.Fail
 import scala.util.Failure
 
 trait DataSourcePool {
