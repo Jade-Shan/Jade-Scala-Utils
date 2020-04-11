@@ -141,7 +141,9 @@ class DataSourcetHolder(val pool: DataSourcePool, val defaultIsolation: TransIso
 		override def initialValue(): TransactionStack = new TransactionStack("datasource")
 	}
 	
-	def transaction() = localTransaction.get
+	def transaction(): TransactionStack = localTransaction.get
+	
+	def isInTransaction(): Boolean = transaction().isInTransaction()
 }	
 	
 abstract class BaseTransactionService extends Logging {
