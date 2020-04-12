@@ -11,6 +11,9 @@ import org.scalatest.FunSuite
 import org.junit.runner.RunWith
 import java.util.Properties
 import jadeutils.database.orm.Record
+import scala.util.Try
+import scala.util.Failure
+import scala.util.Success
 
 object SqliteEnv extends Logging {
 	val dbName = "db-test-01.db"
@@ -75,7 +78,7 @@ class UserSqliteDao(dataSource: DataSourcetHolder) extends Dao[User, String] wit
 		result	
 	}
 
-	def insert(model: User): Unit = {
+	def insert(model: User): Try[Unit] = {
 		logTrace("before insert")
 		val res = if (null != model && null != model.id) {
 			val prep = dataSource.connection.get.prepareStatement( //
@@ -87,8 +90,10 @@ class UserSqliteDao(dataSource: DataSourcetHolder) extends Dao[User, String] wit
 
 			prep.executeBatch()
 //			dataSource.retrunBack() // TODO: 确认提交的逻辑
-		} else throw new RuntimeException("Exception for Text")
+			Success(())
+		} else Failure(new RuntimeException("Exception for Text"))
 		logTrace("after insert")
+		res
 	}
 
 }
@@ -241,7 +246,8 @@ class SqliteDaoTest extends FunSuite with Logging {
 			assert("wen"    == dao.getById("4").get.name)
 			intercept[java.lang.RuntimeException] {
 				try {
-					dao.insert(new User(null, "tiantian"))
+					val tr = dao.insert(new User(null, "tiantian"))
+					if (tr.isFailure) throw tr.failed.get
 				} catch { case e: RuntimeException => 
 					if (!SqliteDataSourceHolder.connection.get.getAutoCommit) {
 						SqliteDataSourceHolder.connection.get.rollback();

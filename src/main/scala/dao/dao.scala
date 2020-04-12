@@ -2,21 +2,26 @@ package jadeutils.comm.dao
 
 import java.lang.Class
 import java.sql.Connection
-import scala.util.Try
 import java.sql.ResultSet
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.sql.SQLException
+
+import scala.util.Try
+import scala.util.Failure
+import scala.util.Success
+
 import org.apache.commons.lang.StringUtils
-import jadeutils.database.orm.ORMUtil
+
 import jadeutils.database.orm.Record
+import jadeutils.database.orm.ORMUtil
 
 trait Dao[T <: Record[K], K] {
 
 	def getById(id: K): Option[T]
 
-	def insert(model: T): Unit
-
+	def insert(model: T): Try[Unit]
+	
 }
 
 
@@ -27,51 +32,65 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 	val params: Array[Type] = paramType.getActualTypeArguments()
 	val entryClass: Class[T] = params(0).asInstanceOf[Class[T]]
 	
-	def doQuery(sql: String): Seq[T] = doQuery(sql, Map.empty)
+	def executeUpdate(sql: String, params: Map[String, AnyRef]): Try[Int] = {
+		val conn = datasource.connection()
+		val ps = conn.get.prepareStatement(sql)
+    val result = try {
+      Success(ps.executeUpdate())
+    } catch { case e: Exception => Failure(e) }
+    if (!datasource.isInTransaction()) {
+      // close jdbc connection if transaction is over
+      datasource.retrunBack()
+    }
+    result
+	}
 	
-	def doQuery(sql: String, params: Map[String, AnyRef]): Seq[T] = {
+	def queryModel(sql: String): Seq[T] = queryModel(sql, Map.empty)
+	
+	def queryModel(sql: String, params: Map[String, AnyRef]): Seq[T] = {
 		val conn = datasource.connection()
 		val ps = conn.get.prepareStatement(sql)
 		val rs = ps.executeQuery()
-		parseAllRow(rs)
+    if (!datasource.isInTransaction()) {
+      // close jdbc connection if transaction is over
+      datasource.retrunBack()
+    }
+    parseAllRow(rs)
 	}
 	
 	def parseAllRow(rs: ResultSet): Seq[T] = {
-		val ll: List[T] = Nil
+		var ll: List[T] = Nil
 		while (rs.next()) {
-//		  ORMUtil.result2record(arg0, arg1)
-		  ???
+		  val record = ORMUtil.result2record[T, K](entryClass, rs)
+		  ll = record :: ll
 		}
+		ll.reverse
+	}
+	
+	def query(colNames: Array[String], sql: String, 
+	    params: Map[String, AnyRef]): List[Map[String, Any]] = //
+	{
+	  var ll: List[Map[String, Any]] = Nil
+		val conn = datasource.connection()
+		val ps = conn.get.prepareStatement(sql)
+		val rs = ps.executeQuery()
+		while (rs.next()) {
+		  val record = result2map(colNames, rs)
+		  ll = record :: ll
+		}
+    if (!datasource.isInTransaction()) {
+      // close jdbc connection if transaction is over
+      datasource.retrunBack()
+    }
 		ll
+	}
+	
+	def result2map(colNames: Array[String], rs: ResultSet): Map[String, Any] = {
+	  var map: Map[String, Any] = Map.empty
+	  for (n <- colNames) {
+	    map = map + (n -> rs.getObject(n))
+	  }
+	  map
 	}
 
 }
-
-//object ORMUtil {
-//  
-//	import jadeutils.database.orm.Column
-//
-//	def parseRow[T](entryClass: Class[T], rs: ResultSet): T = {
-//		val obj = entryClass.getDeclaredConstructor(entryClass).newInstance()
-//		val fields = entryClass.getDeclaredFields()
-//		for (f <- fields) {
-//			val clm = f.getAnnotation(classOf[Column])
-//			if (clm != null) {
-//				val cn = clm.column()
-//				val colName =
-//					if (!StringUtils.isBlank(cn)) cn else f.getName()
-//				try {
-//					val colIdx = rs.findColumn(colName);
-//					val colValue = rs.getObject(colIdx);
-//					f.setAccessible(true);
-//					f.set(obj, colValue);
-//				} catch {
-//					case e: SQLException => e.printStackTrace()
-//					case e: IllegalArgumentException => e.printStackTrace()
-//					case e: IllegalAccessException => e.printStackTrace()
-//				}
-//			}
-//		}
-//		obj
-//	}
-//}

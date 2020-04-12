@@ -10,6 +10,9 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
 import org.junit.runner.RunWith
 import java.util.Properties
+import scala.util.Try
+import scala.util.Success
+import scala.util.Failure
 
 object MysqlEnv extends Logging {
 	val dbName = "db-test-01"
@@ -82,7 +85,7 @@ class UserMysqlDao(dataSource: DataSourcetHolder) extends Dao[User, String] with
 		result
 	}
 
-	def insert(model: User): Unit = {
+	def insert(model: User): Try[Unit] = {
 		logTrace("before insert")
 		val res = if (null != model && null != model.id) {
 			val prep = dataSource.connection.get.prepareStatement("insert into " + MysqlEnv.tableName + " values (?, ?);")
@@ -93,8 +96,10 @@ class UserMysqlDao(dataSource: DataSourcetHolder) extends Dao[User, String] with
 
 			prep.executeBatch()
 //			dataSource.retrunBack() // TODO: 确认提交的逻辑
-		} else throw new RuntimeException("Exception for Text")
+			Success(())
+		} else Failure(new RuntimeException("Exception for Text"))
 		logTrace("after insert")
+		res
 	}
 
 }
@@ -280,7 +285,8 @@ class MySqlDaoTest extends FunSuite with Logging {
 			//
 			intercept[java.lang.RuntimeException] {
 				try {
-					dao.insert(new User(null, "tiantian"))
+					val tr = dao.insert(new User(null, "tiantian"))
+					if (tr.isFailure) throw tr.failed.get
 				} catch {
 					case e: RuntimeException => {
 						MysqlDataSourceHolder.connection().get.rollback();
