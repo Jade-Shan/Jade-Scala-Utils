@@ -53,7 +53,7 @@ class User(val id: String, val name: String) extends Record[String] {
 	override def toString: String = "{%s, %s}".format(id, name)
 }
 
-class UserSqliteDao(dataSource: DataSourcetHolder) extends Dao[User, String] with Logging {
+class SqliteTestPoolDao(dataSource: DataSourcetHolder) extends Logging {
 	def conn() = dataSource.connection
 
 	def getById(id: String): Option[User] = {
@@ -181,7 +181,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	test("Test-trans-00-auto-commit") {
 		SqliteEnv.testInEnv(() => {
 			logInfo("------------------------test auto commit\n")
-			val dao = new UserSqliteDao(SqliteDataSourceHolder)
+			val dao = new SqliteTestPoolDao(SqliteDataSourceHolder)
 			val user = new User("1", "jade")
 			SqliteDataSourceHolder.connection.get.setAutoCommit(true)
 			dao.insert(user)
@@ -194,7 +194,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	test("Test-trans-01-manual-commit") {
 		SqliteEnv.testInEnv(() => {
 			logInfo("------------------------test manual commit\n")
-			val dao = new UserSqliteDao(SqliteDataSourceHolder)
+			val dao = new SqliteTestPoolDao(SqliteDataSourceHolder)
 			val user = new User("1", "jade")
 			SqliteDataSourceHolder.connection.get.setAutoCommit(false)
 			dao.insert(user)
@@ -209,7 +209,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	test("Test-trans-02-rollback-manual") {
 		SqliteEnv.testInEnv(() => {
 			logInfo("------------------------test rollback manual\n")
-			val dao = new UserSqliteDao(SqliteDataSourceHolder)
+			val dao = new SqliteTestPoolDao(SqliteDataSourceHolder)
 			SqliteDataSourceHolder.connection.get.setAutoCommit(false)
 			dao.insert(new User("1", "jade"))
 			dao.insert(new User("2", "yun"))
@@ -234,7 +234,7 @@ class SqliteDaoTest extends FunSuite with Logging {
 	test("Test-trans-03-rollback-by-exception") {
 		SqliteEnv.testInEnv(() => {
 			logInfo("------------------------test rollback by exception\n")
-			val dao = new UserSqliteDao(SqliteDataSourceHolder)
+			val dao = new SqliteTestPoolDao(SqliteDataSourceHolder)
 			SqliteDataSourceHolder.connection.get.setAutoCommit(false)
 			dao.insert(new User("1", "jade"))
 			dao.insert(new User("2", "yun"))

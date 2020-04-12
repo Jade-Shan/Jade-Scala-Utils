@@ -19,7 +19,7 @@ class TestSqliteService extends BaseTransactionService {
 
 object UserSqliteService extends TestSqliteService {
 
-	private val dao = new UserSqliteDao(SqliteDataSourceHolder)
+	private val dao = new MysqlTestPoolDao(SqliteDataSourceHolder)
 
 	def getUser(id: String): Option[User] = withTransaction { dao.getById(id) }
 
