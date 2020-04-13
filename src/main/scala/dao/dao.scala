@@ -71,17 +71,9 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 		} else {
 			val columns = ORMUtil.getColumns[T, K](entryClass).mkString(",")
 			val table = ORMUtil.getTableName[T, K](entryClass)
-			val idValue = id match {
-				case o: Short => "" + o
-				case o: Int => "" + o
-				case o: Long => "" + o
-				case o: java.math.BigDecimal => "" + o
-				case o: BigDecimal => "" + o
-				case _ => "".format(id.toString())
-			}
-			val sql = "select %s from %s where id = %s".format(
-					columns, table, idValue)
-			val recs = queryModel(sql)
+			val sql = "select %s from %s where id = ?".format(
+					columns, table)
+			val recs = queryModel(sql, Seq(id))
 			if (recs.size == 1) Success(recs(0)) else if (recs.size < 1) {
 				Failure(new RuntimeException("no match rec"))
 			} else Failure(new RuntimeException("rec with same primary key"))
