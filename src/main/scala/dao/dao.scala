@@ -13,251 +13,279 @@ import scala.util.Success
 
 import org.apache.commons.lang.StringUtils
 
-import jadeutils.database.orm.Record
+import jadeutils.database.orm.Table
 import jadeutils.database.orm.Column
+import jadeutils.database.orm.Record
 import java.sql.PreparedStatement
 import scala.math.BigDecimal
 import java.util.Date
+import java.util.logging.Logger
+import jadeutils.common.Logging
 
 trait Dao[T <: Record[K], K] {
 
-  def queryModel(sql: String): Seq[T]
+	def queryModel(sql: String): Seq[T]
 
-  def queryModel(sql: String, colNames: Set[String]): Seq[T]
+	def queryModel(sql: String, showCols: Set[String]): Seq[T]
 
-  def queryModel(sql: String, values: Seq[Any]): Seq[T]
+	def queryModel(sql: String, values: Seq[Any]): Seq[T]
 
-  def queryModel(query: String, params: Map[String, AnyRef]): Seq[T]
+	def queryModel(sql: String, showCols: Set[String], values: Seq[Any]): Seq[T]
 
-  def queryModel(sql: String, colNames: Set[String], values: Seq[Any]): Seq[T]
+	def queryModel(queryStr: String, params: Map[String, AnyRef]): Seq[T]
 
-  def queryModel(query: String, colNames: Set[String], params: Map[String, AnyRef]): Seq[T]
+	def queryModel(queryStr: String, showCols: Set[String], params: Map[String, AnyRef]): Seq[T]
 
-  def query(sql: String): List[Map[String, AnyRef]]
+	def query(sql: String): Seq[Map[String, AnyRef]]
 
-  def query(sql: String, colNames: Set[String]): List[Map[String, AnyRef]]
+	def query(sql: String, showCols: Set[String]): Seq[Map[String, AnyRef]]
 
-  def query(sql: String, values: Seq[Any]): List[Map[String, AnyRef]]
+	def query(sql: String, values: Seq[Any]): Seq[Map[String, AnyRef]]
 
-  def query(query: String, params: Map[String, AnyRef]): List[Map[String, AnyRef]]
-  
-  def query(query: String, colNames: Set[String], params: Map[String, Object]): List[Map[String, Object]]
+	def query(sql: String, showCols: Set[String], values: Seq[Any]): Seq[Map[String, AnyRef]]
 
-  def query(sql: String, colNames: Set[String], values: Seq[Any]): List[Map[String, AnyRef]]
+	def query(queryStr: String, params: Map[String, AnyRef]): Seq[Map[String, AnyRef]]
 
-  def getById(id: K): Try[T]
+	def query(queryStr: String, showCols: Set[String], params: Map[String, Object]): Seq[Map[String, AnyRef]]
 
-  def executeUpdate(sql: String, params: Map[String, AnyRef]): Try[Int]
+	def getById(id: K): Try[T]
 
-  def insert(model: T): Try[Unit]
+	def executeUpdate(sql: String, params: Map[String, AnyRef]): Try[Int]
 
-  def update(model: T): Try[Unit]
+	def insert(model: T): Try[Unit]
+
+	def update(model: T): Try[Unit]
 
 }
 
-abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder) extends Dao[T, K] {
+abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder) extends Dao[T, K] with Logging {
 
-  val genType: Type = this.getClass().getGenericSuperclass()
-  val paramType: ParameterizedType = genType.asInstanceOf[ParameterizedType]
-  val params: Array[Type] = paramType.getActualTypeArguments()
-  val entryClass: Class[T] = params(0).asInstanceOf[Class[T]]
+	val genType: Type = this.getClass().getGenericSuperclass()
+	val paramType: ParameterizedType = genType.asInstanceOf[ParameterizedType]
+	val params: Array[Type] = paramType.getActualTypeArguments()
+	val entryClass: Class[T] = params(0).asInstanceOf[Class[T]]
 
-  def queryModel(sql: String): Seq[T] = {
-    queryModel(sql, Set.empty[String], Map.empty[String, Any])
-  }
+	def getById(id: K): Try[T] = {
+		if (null == id) {
+			Failure(new RuntimeException("id cannot be null"))
+		} else {
+			val columns = ORMUtil.getColumns[T, K](entryClass).mkString(",")
+			val table = ORMUtil.getTableName[T, K](entryClass)
+			val idValue = id match {
+				case o: Short => "" + o
+				case o: Int => "" + o
+				case o: Long => "" + o
+				case o: java.math.BigDecimal => "" + o
+				case o: BigDecimal => "" + o
+				case _ => "".format(id.toString())
+			}
+			val sql = "select %s from %s where id = %s".format(
+					columns, table, idValue)
+			val recs = queryModel(sql)
+			if (recs.size == 1) Success(recs(0)) else if (recs.size < 1) {
+				Failure(new RuntimeException("no match rec"))
+			} else Failure(new RuntimeException("rec with same primary key"))
+		}
+	}
 
-  def queryModel(sql: String, colNames: Set[String]): Seq[T] = {
-    queryModel(sql, colNames, Map.empty[String, Any])
-  }
+	def queryModel(sql: String): Seq[T] = {
+		queryModel(sql, Set.empty[String], Map.empty[String, Any])
+	}
 
-  def queryModel(sql: String, values: Seq[Any]): Seq[T] = {
-    queryModel(sql, Set.empty[String], values)
-  }
+	def queryModel(sql: String, showCols: Set[String]): Seq[T] = {
+		queryModel(sql, showCols, Map.empty[String, Any])
+	}
 
-  def queryModel(query: String, params: Map[String, Any]): Seq[T] = {
-    queryModel(query, Set.empty[String], params)
-  }
+	def queryModel(sql: String, values: Seq[Any]): Seq[T] = {
+		queryModel(sql, Set.empty[String], values)
+	}
 
-  def queryModel(sql: String, colNames: Set[String], values: Seq[Any]): Seq[T] = {
-    val conn = datasource.connection()
-    val ps = ORMUtil.setQueryValues( //
-      conn.get.prepareStatement(sql), values)
-    val rs = ps.executeQuery()
-    if (!datasource.isInTransaction()) {
-      // close jdbc connection if transaction is over
-      datasource.retrunBack()
-    }
-    parseAllRow(colNames, rs)
-  }
+	def queryModel(queryStr: String, params: Map[String, Any]): Seq[T] = {
+		queryModel(queryStr, Set.empty[String], params)
+	}
 
-  def queryModel( //
-    query: String, colNames: Set[String], params: Map[String, Any] //
-  ): Seq[T] = {
-    val values = ORMUtil.parseValues(query, params)
-    val sql = ORMUtil.parseQuery(query)
-    val conn = datasource.connection()
-    val ps = ORMUtil.setQueryValues( //
-      conn.get.prepareStatement(sql), values)
-    val rs = ps.executeQuery()
-    if (!datasource.isInTransaction()) {
-      // close jdbc connection if transaction is over
-      datasource.retrunBack()
-    }
-    parseAllRow(colNames, rs)
-  }
+	def queryModel( //
+		queryStr: String, showCols: Set[String], params: Map[String, Any] //
+	): Seq[T] = {
+		val values = ORMUtil.parseValues(queryStr, params)
+		val sql = ORMUtil.parseQuery(queryStr)
+		queryModel(sql, showCols, values)
+	}
 
-  def parseAllRow(colNames: Set[String], rs: ResultSet): Seq[T] = {
-    var ll: List[T] = Nil
-    while (rs.next()) {
-      ll = ORMUtil.row2Obj[T, K](entryClass, colNames, rs) :: ll
-    }
-    ll.reverse
-  }
+	def queryModel( //
+		sql: String, showCols: Set[String], values: Seq[Any] //
+	): Seq[T] = {
+		val rs = baseQuery(sql, showCols, values)
+		if (!datasource.isInTransaction()) {
+			// close jdbc connection if transaction is over
+			datasource.retrunBack()
+		}
+		ORMUtil.allRow2obj[T, K](entryClass, showCols, rs)
+	}
 
-  def query(sql: String): List[Map[String, AnyRef]] = {
-    query(sql, Set.empty[String])
-  }
+	def query(sql: String): Seq[Map[String, AnyRef]] = {
+		query(sql, Set.empty[String])
+	}
 
-  def query(sql: String, colNames: Set[String]): List[Map[String, AnyRef]] = {
-    query(sql, colNames, Seq.empty[Any])
-  }
+	def query(sql: String, showCols: Set[String]): Seq[Map[String, AnyRef]] = {
+		query(sql, showCols, Seq.empty[Any])
+	}
 
-  def query(sql: String, values: Seq[Any]): List[Map[String, AnyRef]] = {
-    query(sql, Set.empty[String], values)
-  }
+	def query(sql: String, values: Seq[Any]): Seq[Map[String, AnyRef]] = {
+		query(sql, Set.empty[String], values)
+	}
 
-  def query(query: String, params: Map[String, AnyRef]): List[Map[String, AnyRef]] = {
-    this.query(query, Set.empty[String], params)
-  }
+	def query(queryStr: String, params: Map[String, AnyRef]): Seq[Map[String, AnyRef]] = {
+		this.query(queryStr, Set.empty[String], params)
+	}
 
-  def query( //
-    sql: String, colNames: Set[String], values: Seq[Any] //
-  ): List[Map[String, AnyRef]] = {
-    var ll: List[Map[String, AnyRef]] = Nil
-    val conn = datasource.connection()
-    val ps = ORMUtil.setQueryValues( //
-      conn.get.prepareStatement(sql), values)
-    val rs = ps.executeQuery()
-    while (rs.next()) {
-      ORMUtil.row2map(colNames, rs) :: ll
-    }
-    if (!datasource.isInTransaction()) {
-      // close jdbc connection if transaction is over
-      datasource.retrunBack()
-    }
-    ll.reverse.toList
-  }
+	def query( //
+	queryStr: String, showCols: Set[String], params: Map[String, AnyRef] //
+	): Seq[Map[String, AnyRef]] = {
+		val values = ORMUtil.parseValues(queryStr, params)
+		val sql = ORMUtil.parseQuery(queryStr)
+		query(sql, showCols, values)
+	}
 
-  def query( //
-    query: String, colNames: Set[String], params: Map[String, AnyRef] //
-  ): List[Map[String, AnyRef]] = {
-    var ll: List[Map[String, AnyRef]] = Nil
-    val values = ORMUtil.parseValues(query, params)
-    val sql = ORMUtil.parseQuery(query)
-    val conn = datasource.connection()
-    val ps = ORMUtil.setQueryValues( //
-      conn.get.prepareStatement(sql), values)
-    val rs = ps.executeQuery()
-    while (rs.next()) {
-      ORMUtil.row2map(colNames, rs) :: ll
-    }
-    if (!datasource.isInTransaction()) {
-      // close jdbc connection if transaction is over
-      datasource.retrunBack()
-    }
-    ll.reverse.toList
-  }
+	def query( //
+		sql: String, showCols: Set[String], values: Seq[Any] //
+	): Seq[Map[String, AnyRef]] = {
+		val rs = baseQuery(sql, showCols, values)
+		if (!datasource.isInTransaction()) {
+			// close jdbc connection if transaction is over
+			datasource.retrunBack()
+		}
+		ORMUtil.allRow2map(showCols, rs)
+	}
 
-  def executeUpdate(sql: String, params: Map[String, AnyRef]): Try[Int] = {
-    val conn = datasource.connection()
-    val ps = conn.get.prepareStatement(sql)
-    val result = try {
-      Success(ps.executeUpdate())
-    } catch { case e: Exception => Failure(e) }
-    if (!datasource.isInTransaction()) {
-      // close jdbc connection if transaction is over
-      datasource.retrunBack()
-    }
-    result
-  }
+	private[this] def baseQuery( //
+		sql: String, showCols: Set[String], values: Seq[Any] //
+	): ResultSet = {
+		logDebug("sql-query: {} \n     cols: {} \n     vals: {}", //
+				sql, showCols, values)
+		val conn = datasource.connection()
+		val ps = ORMUtil.setQueryValues( //
+			conn.get.prepareStatement(sql), values
+		)
+		ps.executeQuery()
+	}
+
+	def executeUpdate(sql: String, params: Map[String, AnyRef]): Try[Int] = {
+		val conn = datasource.connection()
+		val ps = conn.get.prepareStatement(sql)
+		val result = try {
+			Success(ps.executeUpdate())
+		} catch { case e: Exception => Failure(e) }
+		if (!datasource.isInTransaction()) {
+			// close jdbc connection if transaction is over
+			datasource.retrunBack()
+		}
+		result
+	}
 
 }
 
 object ORMUtil {
-  import scala.collection.mutable.{ Map => MMap }
-  import scala.collection.mutable.{ Seq => MSeq }
+	import scala.collection.mutable.{Map => MMap}
+	import scala.collection.mutable.{Seq => MSeq}
 
-  def allRow2map(colNames: Set[String], rs: ResultSet): Seq[Map[String, AnyRef]] = {
-    var lst: List[Map[String, AnyRef]] = Nil
-    while (rs.next()) { lst = row2map(colNames, rs) :: lst }
-    lst.reverse
-  }
+	def allRow2map(showCols: Set[String], rs: ResultSet): Seq[Map[String, AnyRef]] = {
+		var lst: List[Map[String, AnyRef]] = Nil
+		while (rs.next()) { lst = row2map(showCols, rs) :: lst }
+		lst.reverse
+	}
 
-  def row2map(colNames: Set[String], rs: ResultSet): Map[String, AnyRef] = {
-    val map: MMap[String, AnyRef] = MMap.empty
-    for (name <- colNames) {
-      try {
-        map.put(name, rs.getObject(name));
-      } catch { case e: SQLException => e.printStackTrace() }
-    }
-    map.toMap
-  }
+	def row2map(showCols: Set[String], rs: ResultSet): Map[String, AnyRef] = {
+		val map: MMap[String, AnyRef] = MMap.empty
+		for (name <- showCols) {
+			try {
+				map.put(name, rs.getObject(name));
+			} catch { case e: SQLException => e.printStackTrace() }
+		}
+		map.toMap
+	}
 
-  def allRow2obj[T <: Record[K], K](clazz: Class[T], colNames: Set[String], rs: ResultSet): Seq[T] = {
-    var lst: List[T] = Nil
-    while (rs.next()) { lst = row2Obj[T, K](clazz, colNames, rs) :: lst }
-    lst.reverse
-  }
+	def allRow2obj[T <: Record[K], K](clazz: Class[T], showCols: Set[String], rs: ResultSet): Seq[T] = {
+		var lst: List[T] = Nil
+		while (rs.next()) { lst = row2obj[T, K](clazz, showCols, rs) :: lst }
+		lst.reverse
+	}
 
-  def row2Obj[T <: Record[K], K](clazz: Class[T], colNames: Set[String], rs: ResultSet): T = {
-    val obj = clazz.getDeclaredConstructor(clazz).newInstance();
-    for (f <- clazz.getDeclaredFields()) {
-      val clm: Column = f.getAnnotation(classOf[Column])
-      val colName = if (null == clm || StringUtils.isBlank(clm.column())) {
-        f.getName
-      } else clm.column()
-      if (null != colNames && !colNames.isEmpty && !colNames.contains(colName)) {
-        // skip this column
-      } else {
-        try {
-          val colValue = rs.getObject(colName)
-          f.setAccessible(true);
-          f.set(obj, colValue);
-        } catch {
-          case e: SQLException             => e.printStackTrace()
-          case e: IllegalArgumentException => e.printStackTrace()
-          case e: IllegalAccessException   => e.printStackTrace()
-        }
-      }
-    }
-    obj
-  }
+	def row2obj[T <: Record[K], K](clazz: Class[T], showCols: Set[String], rs: ResultSet): T = {
+		val obj = clazz.getDeclaredConstructor(clazz).newInstance();
+		for (f <- clazz.getDeclaredFields()) {
+			val clm: Column = f.getAnnotation(classOf[Column])
+			val colName = if (null == clm || StringUtils.isBlank(clm.column())) {
+				f.getName
+			} else clm.column()
+			if (null != showCols && !showCols.isEmpty && //
+					!showCols.contains(colName) && !showCols.contains(f.getName)) //
+			{ /* skip this column */ } else {
+				try {
+					val colValue = rs.getObject(colName)
+					f.setAccessible(true);
+					f.set(obj, colValue);
+				} catch {
+					case e: SQLException => e.printStackTrace()
+					case e: IllegalArgumentException => e.printStackTrace()
+					case e: IllegalAccessException => e.printStackTrace()
+				}
+			}
+		}
+		obj
+	}
+	
+	def getColumns[T <: Record[K], K](clazz: Class[T]): Seq[String] = {
+		var columns: List[String] = Nil
+		for (f <- clazz.getDeclaredFields()) {
+			val clm: Column = f.getAnnotation(classOf[Column])
+			val colName = if (null == clm || StringUtils.isBlank(clm.column())) {
+				f.getName
+			} else clm.column()
+			columns = "`%s`".format(colName) :: columns
+		}
+		columns
+	}
 
-  val paramRegex = """:([-_0-9a-zA-Z]+)""".r
 
-  def parseValues(query: String, params: Map[String, Any]): Seq[Any] = {
-    for (m <- paramRegex findAllMatchIn query) yield m.group(1)
-  }.toSeq
+	def getTableName[T <: Record[K], K](clazz: Class[T]): String = {
+		val tbl = clazz.getAnnotation(classOf[Table])
+		val database = if (null == tbl || StringUtils.isBlank(tbl.database())) {
+			""
+		} else tbl.database()
+		val table = if (null == tbl || StringUtils.isBlank(tbl.table())) {
+			clazz.getName
+		} else tbl.table
+		if (StringUtils.isBlank(database)) "`%s`".format(table) else {
+			"`%s`.`%s`".format(database, table)
+		}
+	}
 
-  /* 替换查询语句中以冒号开头的参数名替换为sql标准中的问号参数 */
-  def parseQuery(query: String): String = paramRegex.replaceAllIn(query, "?")
+	val paramRegex = """:([-_0-9a-zA-Z]+)""".r
 
-  /* 设置sql中问号参数的值 */
-  def setQueryValues(ps: PreparedStatement, values: Seq[Any]): PreparedStatement = {
-    for (n <- 1 to values.size) {
-      values(n) match {
-        case o: String               => ps.setString(n, o)
-        case o: Short                => ps.setShort(n, o)
-        case o: Int                  => ps.setInt(n, o)
-        case o: Long                 => ps.setLong(n, o)
-        case o: java.math.BigDecimal => ps.setBigDecimal(n, o)
-        case o: BigDecimal           => ps.setBigDecimal(n, o.bigDecimal)
-        case o: java.sql.Date        => ps.setDate(n, o)
-        case o: Date                 => ps.setDate(n, new java.sql.Date(o.getTime))
-        case _                       => ps.setObject(n, null)
-      }
-    }
-    ps
-  }
+	def parseValues(query: String, params: Map[String, Any]): Seq[Any] = {
+		for (m <- paramRegex findAllMatchIn query) yield m.group(1)
+	}.toSeq
+
+	/* 替换查询语句中以冒号开头的参数名替换为sql标准中的问号参数 */
+	def parseQuery(query: String): String = paramRegex.replaceAllIn(query, "?")
+
+	/* 设置sql中问号参数的值 */
+	def setQueryValues(ps: PreparedStatement, values: Seq[Any]): PreparedStatement = {
+		for (n <- 1 to values.size) {
+			values(n) match {
+				case o: String => ps.setString(n, o)
+				case o: Short => ps.setShort(n, o)
+				case o: Int => ps.setInt(n, o)
+				case o: Long => ps.setLong(n, o)
+				case o: java.math.BigDecimal => ps.setBigDecimal(n, o)
+				case o: BigDecimal => ps.setBigDecimal(n, o.bigDecimal)
+				case o: java.sql.Date => ps.setDate(n, o)
+				case o: Date => ps.setDate(n, new java.sql.Date(o.getTime))
+				case _ => ps.setObject(n, null)
+			}
+		}
+		ps
+	}
 
 }
