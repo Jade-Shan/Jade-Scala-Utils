@@ -11,7 +11,7 @@ import scala.util.Try
 import scala.util.Failure
 import scala.util.Success
 
-import org.apache.commons.lang.StringUtils
+import org.apache.commons.lang.StringUtils.isBlank
 
 import jadeutils.database.orm.Table
 import jadeutils.database.orm.Column
@@ -179,7 +179,6 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 
 object ORMUtil {
 	import scala.collection.mutable.{Map => MMap}
-	import scala.collection.mutable.{Seq => MSeq}
 
 	def allRow2map(showCols: Set[String], rs: ResultSet): Seq[Map[String, AnyRef]] = {
 		var lst: List[Map[String, AnyRef]] = Nil
@@ -207,16 +206,37 @@ object ORMUtil {
 		val obj = clazz.getDeclaredConstructor(clazz).newInstance();
 		for (f <- clazz.getDeclaredFields()) {
 			val clm: Column = f.getAnnotation(classOf[Column])
-			val colName = if (null == clm || StringUtils.isBlank(clm.column())) {
-				f.getName
-			} else clm.column()
-			if (null != showCols && !showCols.isEmpty && //
-					!showCols.contains(colName) && !showCols.contains(f.getName)) //
-			{ /* skip this column */ } else {
+			if (null == clm) { /* skip this field */ } else {
+				val fldName = f.getName
+				val colName = if (isBlank(clm.column())) fldName else clm.column
+				if (null != showCols && !showCols.isEmpty && //
+						!showCols.contains(colName) && !showCols.contains(f.getName)) //
+				{ /* skip this column */ } else {
+					try {
+						val colValue = rs.getObject(colName)
+						f.setAccessible(true);
+						f.set(obj, colValue);
+					} catch {
+						case e: SQLException => e.printStackTrace()
+						case e: IllegalArgumentException => e.printStackTrace()
+						case e: IllegalAccessException => e.printStackTrace()
+					}
+				}
+			}
+		}
+		obj
+	}
+	
+	def obj2kv[T <: Record[K], K](clazz: Class[T], obj: T): Seq[(String, Any)] = {
+		var lst: List[(String, Any)] = Nil
+		for (f <- clazz.getDeclaredFields()) {
+			val clm: Column = f.getAnnotation(classOf[Column])
+			if (null == clm) { /* skif this field */ } else {
+				val fldName = f.getName
+				val colName = if (isBlank(clm.column)) fldName else clm.column
 				try {
-					val colValue = rs.getObject(colName)
-					f.setAccessible(true);
-					f.set(obj, colValue);
+					f.setAccessible(true)
+					lst = (colName, f.get(obj)) :: lst
 				} catch {
 					case e: SQLException => e.printStackTrace()
 					case e: IllegalArgumentException => e.printStackTrace()
@@ -224,32 +244,30 @@ object ORMUtil {
 				}
 			}
 		}
-		obj
+		lst
 	}
 	
 	def getColumns[T <: Record[K], K](clazz: Class[T]): Seq[String] = {
 		var columns: List[String] = Nil
 		for (f <- clazz.getDeclaredFields()) {
 			val clm: Column = f.getAnnotation(classOf[Column])
-			val colName = if (null == clm || StringUtils.isBlank(clm.column())) {
-				f.getName
-			} else clm.column()
-			columns = "`%s`".format(colName) :: columns
+			if (null == clm) { /* skif this field */ } else {
+				val fldName = f.getName
+				val colName = if (isBlank(clm.column())) fldName else clm.column
+				columns = "`%s`".format(colName) :: columns
+			}
 		}
 		columns
 	}
 
-
-	def getTableName[T <: Record[K], K](clazz: Class[T]): String = {
+	def getTableName[T <: Record[K], K](clazz: Class[T]): Try[String] = {
 		val tbl = clazz.getAnnotation(classOf[Table])
-		val database = if (null == tbl || StringUtils.isBlank(tbl.database())) {
-			""
-		} else tbl.database()
-		val table = if (null == tbl || StringUtils.isBlank(tbl.table())) {
-			clazz.getName
-		} else tbl.table
-		if (StringUtils.isBlank(database)) "`%s`".format(table) else {
-			"`%s`.`%s`".format(database, table)
+		if (null == tbl) Failure(new RuntimeException("Not Db Entry")) else {
+			val database = if (isBlank(tbl.database)) "" else tbl.database
+			val table = if (isBlank(tbl.table)) clazz.getName else tbl.table
+			if (isBlank(database)) Success("`%s`".format(table)) else {
+				Success("`%s`.`%s`".format(database, table))
+			}
 		}
 	}
 
@@ -266,14 +284,24 @@ object ORMUtil {
 	def setQueryValues(ps: PreparedStatement, values: Seq[Any]): PreparedStatement = {
 		for (n <- 1 to values.size) {
 			values(n) match {
-				case o: String => ps.setString(n, o)
-				case o: Short => ps.setShort(n, o)
-				case o: Int => ps.setInt(n, o)
-				case o: Long => ps.setLong(n, o)
+				case o: scala.Byte => ps.setByte(n, o)
+				case o: scala.Short => ps.setShort(n, o)
+				case o: scala.Int => ps.setInt(n, o)
+				case o: scala.Long => ps.setLong(n, o)
+				case o: scala.Float => ps.setFloat(n, o)
+				case o: scala.Double => ps.setDouble(n, o)
+				case o: scala.BigDecimal => ps.setBigDecimal(n, o.bigDecimal)
+				case o: java.lang.Byte => ps.setByte(n, o)
+				case o: java.lang.Short => ps.setShort(n, o)
+				case o: java.lang.Integer => ps.setInt(n, o)
+				case o: java.lang.Long => ps.setLong(n, o)
+				case o: java.lang.Float => ps.setFloat(n, o)
+				case o: java.lang.Double => ps.setDouble(n, o)
 				case o: java.math.BigDecimal => ps.setBigDecimal(n, o)
-				case o: BigDecimal => ps.setBigDecimal(n, o.bigDecimal)
-				case o: java.sql.Date => ps.setDate(n, o)
+				// 
+				case o: String => ps.setString(n, o)
 				case o: Date => ps.setDate(n, new java.sql.Date(o.getTime))
+				//
 				case _ => ps.setObject(n, null)
 			}
 		}

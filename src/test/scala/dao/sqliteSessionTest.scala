@@ -10,7 +10,6 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
 import org.junit.runner.RunWith
 import java.util.Properties
-import jadeutils.database.orm.Record
 import scala.util.Try
 import scala.util.Failure
 import scala.util.Success
@@ -48,10 +47,6 @@ object SqliteEnv extends Logging {
 object SqliteDataSourcePool extends HikariDataSourcePool(SqliteEnv.dbProps) { }
 
 object SqliteDataSourceHolder extends DataSourcetHolder(SqliteDataSourcePool, TransIso.TS_SERIALIZABLE)
-
-class User(val id: String, val name: String) extends Record[String] {
-	override def toString: String = "{%s, %s}".format(id, name)
-}
 
 class SqliteTestPoolDao(dataSource: DataSourcetHolder) extends Logging {
 	def conn() = dataSource.connection
