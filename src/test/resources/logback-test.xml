@@ -8,6 +8,7 @@
 	<!--定义日志文件的存储地址 勿在 LogBack 的配置中使用相对路径--> 
 	<property name="LOG_HOME" value="." />
 	<property name="LOGFILE"  value="jade-scala-utils.%d{yyyy-MM-dd}.log" />
+
 	<property name="LOGENV"   value="fat" />
 
 	<!-- 日志最大的历史 30天 -->

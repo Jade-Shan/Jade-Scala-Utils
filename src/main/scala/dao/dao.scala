@@ -13,14 +13,24 @@ import scala.util.Success
 
 import org.apache.commons.lang.StringUtils.isBlank
 
-import jadeutils.database.orm.Table
-import jadeutils.database.orm.Column
-import jadeutils.database.orm.Record
 import java.sql.PreparedStatement
 import scala.math.BigDecimal
 import java.util.Date
 import java.util.logging.Logger
 import jadeutils.common.Logging
+
+import scala.annotation.StaticAnnotation
+import scala.reflect.runtime.universe._
+import java.lang.reflect.Field
+
+abstract class Record[K](_id: K, _createTime: Date, _lastChangeTime: Date) {
+	
+	@Column(notNull = true)              var id: K          = _id
+	@Column(column = "create_time")      var createTime     = _createTime
+	@Column(column = "last_change_time") var lastChangeTime = _lastChangeTime
+
+	override def toString: String = s"column($id, $createTime, $lastChangeTime)"
+}
 
 trait Dao[T <: Record[K], K] {
 
@@ -203,62 +213,67 @@ object ORMUtil {
 	}
 
 	def row2obj[T <: Record[K], K](clazz: Class[T], showCols: Set[String], rs: ResultSet): T = {
-		val obj = clazz.getDeclaredConstructor(clazz).newInstance();
-		for (f <- clazz.getDeclaredFields()) {
-			val clm: Column = f.getAnnotation(classOf[Column])
-			if (null == clm) { /* skip this field */ } else {
-				val fldName = f.getName
-				val colName = if (isBlank(clm.column())) fldName else clm.column
-				if (null != showCols && !showCols.isEmpty && //
-						!showCols.contains(colName) && !showCols.contains(f.getName)) //
-				{ /* skip this column */ } else {
-					try {
-						val colValue = rs.getObject(colName)
-						f.setAccessible(true);
-						f.set(obj, colValue);
-					} catch {
-						case e: SQLException => e.printStackTrace()
-						case e: IllegalArgumentException => e.printStackTrace()
-						case e: IllegalAccessException => e.printStackTrace()
-					}
-				}
-			}
-		}
-		obj
-	}
-	
-	def obj2kv[T <: Record[K], K](clazz: Class[T], obj: T): Seq[(String, Any)] = {
-		var lst: List[(String, Any)] = Nil
-		for (f <- clazz.getDeclaredFields()) {
-			val clm: Column = f.getAnnotation(classOf[Column])
-			if (null == clm) { /* skif this field */ } else {
-				val fldName = f.getName
-				val colName = if (isBlank(clm.column)) fldName else clm.column
+		val obj = clazz.getDeclaredConstructor(Seq.empty[Class[_]]: _*).newInstance();
+		
+		for (fld <- getColumnFields(clazz)) {
+			val clm: Column = fld.getAnnotation(classOf[Column])
+			val fldName = fld.getName
+			val colName = if (isBlank(clm.column())) fldName else clm.column
+			if (null != showCols && !showCols.isEmpty && 
+				!showCols.contains(colName) && !showCols.contains(fld.getName) //
+			) { /* skip this column */ } else {
 				try {
-					f.setAccessible(true)
-					lst = (colName, f.get(obj)) :: lst
+					val colValue = rs.getObject(colName)
+					ORMUtil.setValueInField(fld, obj, colValue)
 				} catch {
 					case e: SQLException => e.printStackTrace()
 					case e: IllegalArgumentException => e.printStackTrace()
 					case e: IllegalAccessException => e.printStackTrace()
 				}
 			}
+			
 		}
-		lst
+		obj
 	}
 	
-	def getColumns[T <: Record[K], K](clazz: Class[T]): Seq[String] = {
-		var columns: List[String] = Nil
-		for (f <- clazz.getDeclaredFields()) {
+	def obj2kv[T <: Record[K], K](clazz: Class[T], obj: T): Seq[(String, Any)] = {
+		for (f <- getColumnFields(clazz)) yield {
 			val clm: Column = f.getAnnotation(classOf[Column])
-			if (null == clm) { /* skif this field */ } else {
-				val fldName = f.getName
-				val colName = if (isBlank(clm.column())) fldName else clm.column
-				columns = "`%s`".format(colName) :: columns
-			}
+			val colName: String = if (isBlank(clm.column())) f.getName else clm.column
+			f.setAccessible(true)
+			(colName, f.get(obj))
 		}
-		columns
 	}
+	
+	def getColumns[T <: Record[K], K](clazz: Class[_]): Seq[String] = {
+		for (f <- getColumnFields(clazz)) yield {
+			val clm: Column = f.getAnnotation(classOf[Column])
+			val colName: String = if (isBlank(clm.column())) f.getName else clm.column
+			"%s".format(colName)
+		}
+	}
+	
+	def getColumnFields[T <: Record[K], K](clazz: Class[_]): Seq[Field] = {
+		def loop(clazz: Class[_], oldFlds: Seq[Field]): Seq[Field] = {
+			var newFlds: List[Field] = Nil
+			for (f <- clazz.getDeclaredFields()) {
+				val clm: Column = f.getAnnotation(classOf[Column])
+				if (null == clm) { /* skip this field */ } else {
+					newFlds = f :: newFlds
+				}
+			}
+			val allFlds = newFlds.toSeq ++: oldFlds
+			val superClass: Class[_] = clazz.getSuperclass
+//			val superClass: Class[_ >: T] = clazz.getSuperclass
+//			superClass match {
+//				case sc: Class[_ <: Record[K]] => loop(sc, allCols)
+//				case _ => allCols
+//			}
+			if (null == superClass) allFlds else loop(superClass, allFlds)
+		}
+		loop(clazz, Nil)
+	}
+
 
 	def getTableName[T <: Record[K], K](clazz: Class[T]): Try[String] = {
 		val tbl = clazz.getAnnotation(classOf[Table])
@@ -279,6 +294,19 @@ object ORMUtil {
 
 	/* 替换查询语句中以冒号开头的参数名替换为sql标准中的问号参数 */
 	def parseQuery(query: String): String = paramRegex.replaceAllIn(query, "?")
+
+	def setValueInField(field: Field, obj: Object, value: Object): Unit = {
+		field.setAccessible(true);
+		val fieldType = field.getType
+		fieldType match { // 特别处理一下Date类型，有时数据库会返回  long
+			case t if t.isAssignableFrom(classOf[Date]) => value match {
+				case o: java.lang.Long => field.set(obj, new Date(o))
+				case o: java.util.Date => field.set(obj, o)
+				case o => field.set(obj, o)
+			}
+			case t => field.set(obj, value)
+		}
+	}
 
 	/* 设置sql中问号参数的值 */
 	def setQueryValues(ps: PreparedStatement, values: Seq[Any]): PreparedStatement = {

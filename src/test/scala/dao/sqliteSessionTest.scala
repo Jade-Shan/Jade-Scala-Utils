@@ -1,18 +1,19 @@
 package jadeutils.comm.dao
 
-import java.sql.DriverManager
-import java.sql.Connection
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.FunSuite
+import org.junit.runner.RunWith
 
 import jadeutils.common.Logging
 import jadeutils.common.EnvPropsComponent
 
-import org.scalatest.junit.JUnitRunner
-import org.scalatest.FunSuite
-import org.junit.runner.RunWith
+import java.sql.DriverManager
+import java.sql.Connection
 import java.util.Properties
 import scala.util.Try
 import scala.util.Failure
 import scala.util.Success
+import java.util.Date
 
 object SqliteEnv extends Logging {
 	val dbName = "db-test-01.db"
@@ -30,7 +31,7 @@ object SqliteEnv extends Logging {
 			"drop table if exists " + SqliteEnv.tableName + "" //
 		).executeUpdate()
 		conn.prepareStatement( //
-			"create table " + SqliteEnv.tableName + " (id, name)" //
+			"create table " + SqliteEnv.tableName + " (id, name, create_time date, last_change_time date)" //
 		).executeUpdate()
 		if (!conn.getAutoCommit) conn.commit()
 		SqliteDataSourcePool.retrunBack(conn)
@@ -42,6 +43,22 @@ object SqliteEnv extends Logging {
 		if (!conn2.getAutoCommit) conn2.commit()
 		SqliteDataSourcePool.retrunBack(conn2)
 	}
+}
+
+@Table(database = "db-test-01.db", table = "testuser")
+class User(_id: String, _name: String, _createTime: Date, _lastChangeTime: Date) //
+	extends Record[String](_id, _createTime, _lastChangeTime) //
+{
+
+	def this() = this("", "", new Date(), new Date())
+
+	def this(id: String) = this(id, "", new Date(), new Date())
+
+	def this(id: String, name: String) = this(id, name, new Date(), new Date())
+	
+	@Column var name: String = _name
+
+	override def toString: String = s"User($id, $name, $createTime, $lastChangeTime)"
 }
 
 object SqliteDataSourcePool extends HikariDataSourcePool(SqliteEnv.dbProps) { }

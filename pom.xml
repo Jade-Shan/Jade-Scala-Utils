@@ -21,11 +21,12 @@
 	</properties>
 
 	<dependencies>
+		<!-- 
 		<dependency>
 			<groupId>net.jade-dungeon</groupId>
 			<artifactId>javautils-dao</artifactId>
 		</dependency>
-		<!-- -->
+		-->
 		<dependency>
 			<groupId>com.googlecode.ez-vcard</groupId>
 			<artifactId>ez-vcard</artifactId>
