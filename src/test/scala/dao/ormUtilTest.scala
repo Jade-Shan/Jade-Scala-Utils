@@ -31,7 +31,7 @@ class ORMUtilTest extends FunSuite with Logging {
 			logDebug("field ann is: {}", clm)
 		}
 		//
-		val cols = ORMUtil.getColumns[User, String](classOf[User])
+		val cols = ORMUtil.getColumns[User, String](classOf[User], Set.empty[String])
 		println(cols)
 		// 执行结果不应该含有标准答案中没有的元素
 		for (c <- cols) assert(userTableColumns.contains(c))
@@ -43,7 +43,7 @@ class ORMUtilTest extends FunSuite with Logging {
 		val now = new Date(System.currentTimeMillis())
 		val user = new User("1", "Jade", now, now)
 		val clazz = classOf[User]
-		val seq  = ORMUtil.obj2kv[User, String](clazz, user)
+		val seq  = ORMUtil.obj2kv[User, String](clazz, user, Set.empty[String])
 		var map: Map[String, Any] = Map.empty
 		for (e <- seq) { map = map + e }
 		// 执行结果不应该含有标准答案中没有的元素

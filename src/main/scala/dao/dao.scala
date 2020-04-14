@@ -60,6 +60,8 @@ trait Dao[T <: Record[K], K] {
 
 	def getById(id: K): Try[T]
 
+	def getById(id: K, showCols: Set[String]): Try[T]
+
 	def executeUpdate(sql: String, params: Map[String, AnyRef]): Try[Int]
 
 	def insert(model: T): Try[Unit]
@@ -75,11 +77,13 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 	val params: Array[Type] = paramType.getActualTypeArguments()
 	val entryClass: Class[T] = params(0).asInstanceOf[Class[T]]
 
-	def getById(id: K): Try[T] = {
+	def getById(id: K): Try[T] = getById(id, Set.empty[String])
+
+	def getById(id: K, showCols: Set[String]): Try[T] = {
 		if (null == id) {
 			Failure(new RuntimeException("id cannot be null"))
 		} else {
-			val columns = ORMUtil.getColumns[T, K](entryClass).mkString(",")
+			val columns = ORMUtil.getColumns[T, K](entryClass, showCols).mkString(",")
 			val table = ORMUtil.getTableName[T, K](entryClass)
 			val sql = "select %s from %s where id = ?".format(
 					columns, table)
@@ -214,30 +218,24 @@ object ORMUtil {
 
 	def row2obj[T <: Record[K], K](clazz: Class[T], showCols: Set[String], rs: ResultSet): T = {
 		val obj = clazz.getDeclaredConstructor(Seq.empty[Class[_]]: _*).newInstance();
-		
-		for (fld <- getColumnFields(clazz)) {
+		for (fld <- getColumnFields(clazz, showCols)) {
 			val clm: Column = fld.getAnnotation(classOf[Column])
 			val fldName = fld.getName
 			val colName = if (isBlank(clm.column())) fldName else clm.column
-			if (null != showCols && !showCols.isEmpty && 
-				!showCols.contains(colName) && !showCols.contains(fld.getName) //
-			) { /* skip this column */ } else {
-				try {
-					val colValue = rs.getObject(colName)
-					ORMUtil.setValueInField(fld, obj, colValue)
-				} catch {
-					case e: SQLException => e.printStackTrace()
-					case e: IllegalArgumentException => e.printStackTrace()
-					case e: IllegalAccessException => e.printStackTrace()
-				}
+			try {
+				val colValue = rs.getObject(colName)
+				ORMUtil.setValueInField(fld, obj, colValue)
+			} catch {
+				case e: SQLException => e.printStackTrace()
+				case e: IllegalArgumentException => e.printStackTrace()
+				case e: IllegalAccessException => e.printStackTrace()
 			}
-			
 		}
 		obj
 	}
 	
-	def obj2kv[T <: Record[K], K](clazz: Class[T], obj: T): Seq[(String, Any)] = {
-		for (f <- getColumnFields(clazz)) yield {
+	def obj2kv[T <: Record[K], K](clazz: Class[T], obj: T, showCols: Set[String]): Seq[(String, Any)] = {
+		for (f <- getColumnFields(clazz, showCols)) yield {
 			val clm: Column = f.getAnnotation(classOf[Column])
 			val colName: String = if (isBlank(clm.column())) f.getName else clm.column
 			f.setAccessible(true)
@@ -245,21 +243,33 @@ object ORMUtil {
 		}
 	}
 	
-	def getColumns[T <: Record[K], K](clazz: Class[_]): Seq[String] = {
-		for (f <- getColumnFields(clazz)) yield {
+	/* 字段对应表的列名 */
+	def getColumns[T <: Record[K], K](clazz: Class[_], showCols: Set[String]): Seq[String] = {
+		for (f <- getColumnFields(clazz, showCols)) yield {
 			val clm: Column = f.getAnnotation(classOf[Column])
 			val colName: String = if (isBlank(clm.column())) f.getName else clm.column
 			"%s".format(colName)
 		}
 	}
 	
-	def getColumnFields[T <: Record[K], K](clazz: Class[_]): Seq[Field] = {
-		def loop(clazz: Class[_], oldFlds: Seq[Field]): Seq[Field] = {
+	/* 类中有column标记的字段 */
+	def getColumnFields[T <: Record[K], K](clazz: Class[_], showCols: Set[String])
+		: Seq[Field] = //
+	{
+		def loop(clazz: Class[_], oldFlds: Seq[Field], showCols: Set[String]): Seq[Field] = {
 			var newFlds: List[Field] = Nil
-			for (f <- clazz.getDeclaredFields()) {
-				val clm: Column = f.getAnnotation(classOf[Column])
-				if (null == clm) { /* skip this field */ } else {
-					newFlds = f :: newFlds
+			for (fld <- clazz.getDeclaredFields()) {
+				val clm: Column = fld.getAnnotation(classOf[Column])
+				if (null == clm) { /* skip this field */ 
+				} else {
+					val fldName = fld.getName
+					val colName = if (isBlank(clm.column())) fldName else clm.column
+					if (null != showCols && !showCols.isEmpty && //
+							!showCols.contains(colName) && //
+							!showCols.contains(fld.getName)) { /* skip this column */ 
+					} else {
+						newFlds = fld :: newFlds
+					}
 				}
 			}
 			val allFlds = newFlds.toSeq ++: oldFlds
@@ -269,9 +279,9 @@ object ORMUtil {
 //				case sc: Class[_ <: Record[K]] => loop(sc, allCols)
 //				case _ => allCols
 //			}
-			if (null == superClass) allFlds else loop(superClass, allFlds)
+			if (null == superClass) allFlds else loop(superClass, allFlds, showCols)
 		}
-		loop(clazz, Nil)
+		loop(clazz, Nil, showCols)
 	}
 
 
