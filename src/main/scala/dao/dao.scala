@@ -11,7 +11,7 @@ import scala.util.Try
 import scala.util.Failure
 import scala.util.Success
 
-import org.apache.commons.lang.StringUtils.isBlank
+import org.apache.commons.lang.StringUtils.{isBlank => isBlankStr}
 
 import java.sql.PreparedStatement
 import scala.math.BigDecimal
@@ -83,10 +83,10 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 		if (null == id) {
 			Failure(new RuntimeException("id cannot be null"))
 		} else {
-			val columns = ORMUtil.getColumns[T, K](entryClass, showCols).mkString(",")
-			val table = ORMUtil.getTableName[T, K](entryClass)
-			val sql = "select %s from %s where id = ?".format(
-					columns, table)
+			val table = ORMUtil.getTableName[T, K](entryClass).get
+			val columns = ORMUtil.getColumns[T, K](entryClass, showCols)
+			val colStr = { for (s <- columns) yield "`%s`".format(s) }.mkString(",")
+			val sql = s"select $colStr from $table where id = ?"
 			val recs = queryModel(sql, Seq(id))
 			if (recs.size == 1) Success(recs(0)) else if (recs.size < 1) {
 				Failure(new RuntimeException("no match rec"))
@@ -221,7 +221,7 @@ object ORMUtil {
 		for (fld <- getColumnFields(clazz, showCols)) {
 			val clm: Column = fld.getAnnotation(classOf[Column])
 			val fldName = fld.getName
-			val colName = if (isBlank(clm.column())) fldName else clm.column
+			val colName = if (isBlankStr(clm.column())) fldName else clm.column
 			try {
 				val colValue = rs.getObject(colName)
 				ORMUtil.setValueInField(fld, obj, colValue)
@@ -237,7 +237,7 @@ object ORMUtil {
 	def obj2kv[T <: Record[K], K](clazz: Class[T], obj: T, showCols: Set[String]): Seq[(String, Any)] = {
 		for (f <- getColumnFields(clazz, showCols)) yield {
 			val clm: Column = f.getAnnotation(classOf[Column])
-			val colName: String = if (isBlank(clm.column())) f.getName else clm.column
+			val colName: String = if (isBlankStr(clm.column())) f.getName else clm.column
 			f.setAccessible(true)
 			(colName, f.get(obj))
 		}
@@ -247,7 +247,7 @@ object ORMUtil {
 	def getColumns[T <: Record[K], K](clazz: Class[_], showCols: Set[String]): Seq[String] = {
 		for (f <- getColumnFields(clazz, showCols)) yield {
 			val clm: Column = f.getAnnotation(classOf[Column])
-			val colName: String = if (isBlank(clm.column())) f.getName else clm.column
+			val colName: String = if (isBlankStr(clm.column())) f.getName else clm.column
 			"%s".format(colName)
 		}
 	}
@@ -263,7 +263,7 @@ object ORMUtil {
 				if (null == clm) { /* skip this field */ 
 				} else {
 					val fldName = fld.getName
-					val colName = if (isBlank(clm.column())) fldName else clm.column
+					val colName = if (isBlankStr(clm.column())) fldName else clm.column
 					if (null != showCols && !showCols.isEmpty && //
 							!showCols.contains(colName) && //
 							!showCols.contains(fld.getName)) { /* skip this column */ 
@@ -288,11 +288,12 @@ object ORMUtil {
 	def getTableName[T <: Record[K], K](clazz: Class[T]): Try[String] = {
 		val tbl = clazz.getAnnotation(classOf[Table])
 		if (null == tbl) Failure(new RuntimeException("Not Db Entry")) else {
-			val database = if (isBlank(tbl.database)) "" else tbl.database
-			val table = if (isBlank(tbl.table)) clazz.getName else tbl.table
-			if (isBlank(database)) Success("`%s`".format(table)) else {
-				Success("`%s`.`%s`".format(database, table))
+			val database = if (isBlankStr(tbl.database)) "" else tbl.database
+			val table = if (isBlankStr(tbl.table)) clazz.getName else tbl.table
+			val res = if (isBlankStr(database)) s"`$table`" else {
+				s"`$database`.`$table`"
 			}
+			Success(res)
 		}
 	}
 
@@ -321,7 +322,7 @@ object ORMUtil {
 	/* 设置sql中问号参数的值 */
 	def setQueryValues(ps: PreparedStatement, values: Seq[Any]): PreparedStatement = {
 		for (n <- 1 to values.size) {
-			values(n) match {
+			values(n - 1) match {
 				case o: scala.Byte => ps.setByte(n, o)
 				case o: scala.Short => ps.setShort(n, o)
 				case o: scala.Int => ps.setInt(n, o)

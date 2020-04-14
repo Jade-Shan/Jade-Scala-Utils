@@ -11,19 +11,20 @@ import java.util.Date
 
 @RunWith(classOf[JUnitRunner])
 class ORMUtilTest extends FunSuite with Logging {
-	
-	
+
 	val userTableColumns = Set("last_change_time", "create_time", "id", "name")
 
-	test("Test-DBTable-Annotation") {
+	test("Test-00-DBTable-Annotation") {
 		logDebug("------------------------")
 		val tablename = ORMUtil.getTableName[User, String](classOf[User])
 		assert(tablename.isSuccess)
-		assert("`db-test-01.db`.`testuser`" == tablename.get)
+		logDebug("------------------------" + tablename.get)
+//		assert("`db-test-01`.`testuser`" == tablename.get)
+		assert("`testuser`" == tablename.get)
 		logDebug("------------------------obj 2 map : {}", tablename)
 	}
 
-	test("Test-DBColumn-Annotation") {
+	test("Test-01-DBColumn-Annotation") {
 		val user = new User("1", "Jade")
 		val clazz = classOf[User]
 		for (f <- clazz.getDeclaredFields()) {
@@ -38,12 +39,12 @@ class ORMUtilTest extends FunSuite with Logging {
 		// 执行结果应该含有标准答案中所有的元素
 		for (c <- userTableColumns) assert(cols.contains(c))
 	}
-	
-	test("Test-obj-to-keyValue") {
+
+	test("Test-02-obj-to-keyValue") {
 		val now = new Date(System.currentTimeMillis())
 		val user = new User("1", "Jade", now, now)
 		val clazz = classOf[User]
-		val seq  = ORMUtil.obj2kv[User, String](clazz, user, Set.empty[String])
+		val seq = ORMUtil.obj2kv[User, String](clazz, user, Set.empty[String])
 		var map: Map[String, Any] = Map.empty
 		for (e <- seq) { map = map + e }
 		// 执行结果不应该含有标准答案中没有的元素
@@ -56,8 +57,8 @@ class ORMUtilTest extends FunSuite with Logging {
 		assert(now == map.get("create_time").get)
 		assert(now == map.get("last_change_time").get)
 	}
-	
-	test("Test-reflect-obj") {
+
+	test("Test-03-reflect-obj") {
 		val cons = classOf[User].getDeclaredConstructors
 		println(cons.size)
 		for (con <- cons) println("ccccc " + con.getParameterTypes)
@@ -66,31 +67,73 @@ class ORMUtilTest extends FunSuite with Logging {
 		println(con)
 		println(con.newInstance())
 	}
-	
-	test("Test-resultset-to-obj") {
+
+	test("Test-04-resultset-to-obj") {
+		val now = new Date(System.currentTimeMillis())
+		val user = new User("1", "Jade", now, now)
 		SqliteEnv.testInEnv(() => {
 			val now = new java.sql.Date(System.currentTimeMillis())
 			val prep1 = SqliteDataSourceHolder.connection.get.prepareStatement( //
-				"insert into " + SqliteEnv.tableName + " values (?, ?, ?, ?)"
+					"insert into `" + SqliteEnv.tableName + //
+					"` (`id`,`name`,`last_change_time`,`create_time`) " + //
+					"values (?,?,?,?)"
 			)
-			prep1.setString(1, "1");
-			prep1.setString(2, "Jade");
-			prep1.setDate(3, now);
-			prep1.setDate(4, now);
+			prep1.setString(1, user.id)
+			prep1.setString(2, user.name)
+			prep1.setDate(3, new java.sql.Date(user.createTime.getTime))
+			prep1.setDate(4, new java.sql.Date(user.lastChangeTime.getTime))
 			prep1.addBatch();
 			prep1.executeBatch()
 			//
-			val prep2 = SqliteDataSourceHolder.connection.get.prepareStatement(//
-					"select * from " + SqliteEnv.tableName + " where id = ? ")
+			val showCols = Set.empty[String]
+			val entryClass = classOf[User]
+			val table = ORMUtil.getTableName[User, String](entryClass).get
+			val columns = ORMUtil.getColumns[User, String](entryClass, showCols)
+			val colStr = { for (s <- columns) yield "`%s`".format(s) }.mkString(",")
+			val sql = s"select $colStr from $table where id = ?"			
+			logDebug(sql)
+			val prep2 = SqliteDataSourceHolder.connection.get.prepareStatement( //
+				"select * from " + SqliteEnv.tableName + " where id = ? "
+			)
+			prep2.setString(1, "1");
+			val rs = prep2.executeQuery()
+			val obj = ORMUtil.row2obj[User, String](classOf[User], null, rs)
+			logDebug(obj.toString)
+			assert("1" == obj.id)
+			assert("Jade" == obj.name)
+//			assert(now == obj.createTime)
+//			assert(now == obj.lastChangeTime)
+		})
+	}
+
+	test("Test-05-obj-to-insert") {
+		SqliteEnv.testInEnv(() => {
+			val now = new Date(System.currentTimeMillis())
+			val user = new User("1", "Jade", now, now)
+			val table = ORMUtil.getTableName[User, String](classOf[User]).get
+			val seq = ORMUtil.obj2kv[User, String](classOf[User], user, Set.empty[String])
+			logDebug(seq.toString)
+			val xx = seq.unzip
+			val colStr = { for (s <- xx._1) yield "`%s`".format(s) }.mkString(",")
+			val values = xx._2
+			val markStr = { for (s <- xx._1) yield "?" }.mkString(",")
+			val sql = s"insert into $table ($colStr) values ($markStr)"
+			logDebug(sql)
+			val prep1 = SqliteDataSourceHolder.connection.get.prepareStatement(sql)
+			ORMUtil.setQueryValues(prep1, values)
+			prep1.addBatch();
+			prep1.executeBatch()
+			//
+			val prep2 = SqliteDataSourceHolder.connection.get.prepareStatement( //
+				"select * from " + SqliteEnv.tableName + " where id = ? "
+			)
 			prep2.setString(1, "1");
 			val rs = prep2.executeQuery()
 			val rec = ORMUtil.row2obj[User, String](classOf[User], null, rs)
 			println(rec)
 		})
-
 	}
-	
-	
+
 }
 
 // TODO: https://www.programcreek.com/scala/java.lang.reflect.Constructor

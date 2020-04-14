@@ -16,7 +16,7 @@ import scala.util.Success
 import java.util.Date
 
 object SqliteEnv extends Logging {
-	val dbName = "db-test-01.db"
+	val dbName = "db-test-01"
 	val tableName = "testuser"
 	val dbProps = new Properties();
 	dbProps.setProperty("dataSourceClassName", "org.sqlite.SQLiteDataSource");
@@ -45,7 +45,8 @@ object SqliteEnv extends Logging {
 	}
 }
 
-@Table(database = "db-test-01.db", table = "testuser")
+//@Table(database = "db-test-01", table = "testuser")
+@Table(table = "testuser")
 class User(_id: String, _name: String, _createTime: Date, _lastChangeTime: Date) //
 	extends Record[String](_id, _createTime, _lastChangeTime) //
 {
