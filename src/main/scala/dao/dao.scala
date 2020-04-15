@@ -52,9 +52,9 @@ trait Dao[T <: Record[K], K] {
 
 	def query(sql: String, values: Seq[Any]): Seq[Map[String, AnyRef]]
 
-	def query(queryStr: String, params: Map[String, AnyRef]): Seq[Map[String, AnyRef]]
+	def query(queryStr: String, params: Map[String, Any]): Seq[Map[String, AnyRef]]
 
-	def query(queryStr: String, showCols: Set[String], params: Map[String, AnyRef]): Seq[Map[String, AnyRef]]
+	def query(queryStr: String, showCols: Set[String], params: Map[String, Any]): Seq[Map[String, AnyRef]]
 
 	def query(sql: String, showCols: Set[String], values: Seq[Any]): Seq[Map[String, AnyRef]]
 
@@ -62,7 +62,7 @@ trait Dao[T <: Record[K], K] {
 
 	def getById(id: K, showCols: Set[String]): Try[T]
 
-	def executeUpdate(queryStr: String, params: Map[String, AnyRef]): Try[Int]
+	def executeUpdate(queryStr: String, params: Map[String, Any]): Try[Int]
 
 	def executeUpdate(sql: String, values: Seq[Any]): Try[Int]
 
@@ -143,12 +143,12 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 		query(sql, Set.empty[String], values)
 	}
 
-	def query(queryStr: String, params: Map[String, AnyRef]): Seq[Map[String, AnyRef]] = {
+	def query(queryStr: String, params: Map[String, Any]): Seq[Map[String, AnyRef]] = {
 		this.query(queryStr, Set.empty[String], params)
 	}
 
 	def query( //
-	queryStr: String, showCols: Set[String], params: Map[String, AnyRef] //
+		queryStr: String, showCols: Set[String], params: Map[String, Any] //
 	): Seq[Map[String, AnyRef]] = {
 		val values = ORMUtil.parseValues(queryStr, params)
 		val sql = ORMUtil.parseQuery(queryStr)
@@ -178,9 +178,9 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 		ps.executeQuery()
 	}
 
-	def executeUpdate(queryStr: String, params: Map[String, AnyRef]): Try[Int] = {
-		val values = ORMUtil.parseValues(queryStr, params)
-		val sql = ORMUtil.parseQuery(queryStr)
+	def executeUpdate(queryStr: String, params: Map[String, Any]): Try[Int] = {
+		val values: Seq[Any] = ORMUtil.parseValues(queryStr, params)
+		val sql: String = ORMUtil.parseQuery(queryStr)
 		executeUpdate(sql, values)
 	}
 	
