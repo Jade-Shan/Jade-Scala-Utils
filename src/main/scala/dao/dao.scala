@@ -83,7 +83,7 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 		if (null == id) {
 			Failure(new RuntimeException("id cannot be null"))
 		} else {
-			val table = ORMUtil.getTableName[T, K](entryClass).get
+			val table = ORMUtil.getTableName[T, K](entryClass, datasource.dialect).get
 			val columns = ORMUtil.getColumns[T, K](entryClass, showCols)
 			val colStr = { for (s <- columns) yield "`%s`".format(s) }.mkString(",")
 			val sql = s"select $colStr from $table where id = ?"
@@ -285,15 +285,12 @@ object ORMUtil {
 	}
 
 
-	def getTableName[T <: Record[K], K](clazz: Class[T]): Try[String] = {
+	def getTableName[T <: Record[K], K](clazz: Class[T], dialect: Dialect): Try[String] = {
 		val tbl = clazz.getAnnotation(classOf[Table])
 		if (null == tbl) Failure(new RuntimeException("Not Db Entry")) else {
 			val database = if (isBlankStr(tbl.database)) "" else tbl.database
 			val table = if (isBlankStr(tbl.table)) clazz.getName else tbl.table
-			val res = if (isBlankStr(database)) s"`$table`" else {
-				s"`$database`.`$table`"
-			}
-			Success(res)
+			Success(dialect.sqlTableName(database, table))
 		}
 	}
 

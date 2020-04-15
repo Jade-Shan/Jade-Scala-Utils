@@ -118,6 +118,8 @@ class TransactionStack(val tag: String) extends Logging {
 class DataSourcetHolder(val pool: DataSourcePool, val defaultIsolation: TransIso) extends Logging {
 
 	private[this] val resource = new ThreadLocal[Connection]
+	
+	def dialect(): Dialect = pool.dialect
 
 	def isBroken() = null == resource.get || resource.get.isClosed
 	

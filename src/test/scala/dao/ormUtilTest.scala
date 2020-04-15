@@ -16,7 +16,7 @@ class ORMUtilTest extends FunSuite with Logging {
 
 	test("Test-00-DBTable-Annotation") {
 		logDebug("------------------------")
-		val tablename = ORMUtil.getTableName[User, String](classOf[User])
+		val tablename = ORMUtil.getTableName[User, String](classOf[User], DialectSqlite)
 		assert(tablename.isSuccess)
 		logDebug("------------------------" + tablename.get)
 //		assert("`db-test-01`.`testuser`" == tablename.get)
@@ -87,7 +87,7 @@ class ORMUtilTest extends FunSuite with Logging {
 			//
 			val showCols = Set.empty[String]
 			val entryClass = classOf[User]
-			val table = ORMUtil.getTableName[User, String](entryClass).get
+			val table = ORMUtil.getTableName[User, String](entryClass, DialectSqlite).get
 			val columns = ORMUtil.getColumns[User, String](entryClass, showCols)
 			val colStr = { for (s <- columns) yield "`%s`".format(s) }.mkString(",")
 			val sql = s"select $colStr from $table where id = ?"			
@@ -110,7 +110,7 @@ class ORMUtilTest extends FunSuite with Logging {
 		SqliteEnv.testInEnv(() => {
 			val now = new Date(System.currentTimeMillis())
 			val user = new User("1", "Jade", now, now)
-			val table = ORMUtil.getTableName[User, String](classOf[User]).get
+			val table = ORMUtil.getTableName[User, String](classOf[User], DialectSqlite).get
 			val seq = ORMUtil.obj2kv[User, String](classOf[User], user, Set.empty[String])
 			logDebug(seq.toString)
 			val xx = seq.unzip
