@@ -66,9 +66,11 @@ trait Dao[T <: Record[K], K] {
 
 	def executeUpdate(sql: String, values: Seq[Any]): Try[Int]
 
-	def insert(model: T): Try[Unit]
+	def insert(model: T): Try[Int]
 
-	def update(model: T): Try[Unit]
+	def update(model: T): Try[Int]
+
+	def insertOrUpdate(model: T): Try[Int]
 
 }
 
@@ -120,15 +122,14 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 		queryModel(sql, showCols, values)
 	}
 
-	def queryModel( //
-		sql: String, showCols: Set[String], values: Seq[Any] //
-	): Seq[T] = {
+	def queryModel(sql: String, showCols: Set[String], values: Seq[Any]): Seq[T] = {
 		val rs = baseQuery(sql, showCols, values)
+		val result = ORMUtil.allRow2obj[T, K](entryClass, showCols, rs)
 		if (!datasource.isInTransaction()) {
 			// close jdbc connection if transaction is over
 			datasource.retrunBack()
 		}
-		ORMUtil.allRow2obj[T, K](entryClass, showCols, rs)
+		result
 	}
 
 	def query(sql: String): Seq[Map[String, AnyRef]] = {
@@ -159,23 +160,58 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 		sql: String, showCols: Set[String], values: Seq[Any] //
 	): Seq[Map[String, AnyRef]] = {
 		val rs = baseQuery(sql, showCols, values)
+		val result = ORMUtil.allRow2map(showCols, rs)
 		if (!datasource.isInTransaction()) {
 			// close jdbc connection if transaction is over
 			datasource.retrunBack()
 		}
-		ORMUtil.allRow2map(showCols, rs)
+		result
 	}
 
 	private[this] def baseQuery( //
 		sql: String, showCols: Set[String], values: Seq[Any] //
 	): ResultSet = {
-		logDebug(" sql-query: {} \n      cols: {} \n      vals: {}", //
+		logDebug("\n sql-query: {} \n      cols: {} \n      vals: {}", //
 				sql, showCols, values)
 		val conn = datasource.connection()
 		val ps = ORMUtil.setQueryValues( //
 			conn.get.prepareStatement(sql), values
 		)
 		ps.executeQuery()
+	}
+
+	def insertOrUpdate(model: T): Try[Int] = {
+		val table = ORMUtil.getTableName[T, K](entryClass, datasource.dialect).get 
+		val sql = s"select count(1) as c from $table where id = ?"
+		val recs = query(sql, Seq(model.id))
+		val count = if (recs.length < 1) 0 else if (!recs(0).contains("c")) 0 else {
+			val n = recs(0).getOrElse("c", 0)
+			if (!n.isInstanceOf[Int]) 0 else n.asInstanceOf[Int]
+		}
+		logDebug("insertOrUpdate old rec: {}, count: {}", recs, count)
+		if (count > 0) update(model) else insert(model)
+			
+	}
+	
+	def insert(model: T): Try[Int] = {
+		val table = ORMUtil.getTableName[User, String](classOf[User], datasource.dialect).get
+		val seq = ORMUtil.obj2kv[T,K](entryClass, model, Set.empty[String])
+		val xx = seq.unzip
+		val colStr = { for (s <- xx._1) yield "`%s`".format(s) }.mkString(",")
+		val values = xx._2
+		val markStr = { for (s <- xx._1) yield "?" }.mkString(",")
+		val sql = s"INSERT INTO $table ($colStr) VALUES ($markStr)"
+		executeUpdate(sql, values)
+	}
+
+	def update(model: T): Try[Int] = {
+		val table = ORMUtil.getTableName[User, String](classOf[User], datasource.dialect).get
+		val seq = ORMUtil.obj2kv[T,K](entryClass, model, Set.empty[String])
+		val xx = seq.unzip
+		val colStr = { for (s <- xx._1) yield "`%s`=?".format(s) }.mkString(",")
+		val values: Seq[Any] = xx._2.:+(model.id)
+		val sql = s"UPDATE $table SET $colStr WHERE id = ?"
+		executeUpdate(sql, values)
 	}
 
 	def executeUpdate(queryStr: String, params: Map[String, Any]): Try[Int] = {
@@ -185,7 +221,7 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 	}
 	
 	def executeUpdate(sql: String, values: Seq[Any]): Try[Int] = {
-		logDebug("sql-update: {} \n     vals: {}", //
+		logDebug("\nsql-update: {} \n     vals: {}", //
 				sql, values)
 		val conn = datasource.connection()
 		val ps = conn.get.prepareStatement(sql)
@@ -213,8 +249,12 @@ object ORMUtil {
 
 	def row2map(showCols: Set[String], rs: ResultSet): Map[String, AnyRef] = {
 		val map: MMap[String, AnyRef] = MMap.empty
-		for (name <- showCols) {
-			try {
+		val colCount = rs.getMetaData.getColumnCount
+		val colNames = for (c <- 1 to colCount) yield rs.getMetaData.getColumnName(c)
+		for (name <- colNames) {
+			if (null != showCols && showCols.size > 0 && showCols.contains(name)) {
+				/* skip this col */
+			} else try {
 				map.put(name, rs.getObject(name));
 			} catch { case e: SQLException => e.printStackTrace() }
 		}

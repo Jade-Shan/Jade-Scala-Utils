@@ -87,6 +87,7 @@ class ORMUtilTest extends FunSuite with Logging {
 			prep1.setDate(4, new java.sql.Date(user.lastChangeTime.getTime))
 			prep1.addBatch();
 			prep1.executeBatch()
+			SqliteDataSourceHolder.retrunBack()
 			//
 			val showCols = Set.empty[String]
 			val entryClass = classOf[User]
@@ -101,6 +102,7 @@ class ORMUtilTest extends FunSuite with Logging {
 			prep2.setString(1, "1");
 			val rs = prep2.executeQuery()
 			val obj = ORMUtil.row2obj[User, String](classOf[User], null, rs)
+			SqliteDataSourceHolder.retrunBack()
 			logDebug(obj.toString)
 			assert("1" == obj.id)
 			assert("Jade" == obj.name)
@@ -124,7 +126,7 @@ class ORMUtilTest extends FunSuite with Logging {
 			logDebug(sql)
 			val prep1 = SqliteDataSourceHolder.connection.get.prepareStatement(sql)
 			ORMUtil.setQueryValues(prep1, values)
-			prep1.addBatch();
+			prep1.addBatch()
 			prep1.executeBatch()
 			//
 			val prep2 = SqliteDataSourceHolder.connection.get.prepareStatement( //
@@ -133,6 +135,7 @@ class ORMUtilTest extends FunSuite with Logging {
 			prep2.setString(1, "1");
 			val rs = prep2.executeQuery()
 			val rec = ORMUtil.row2obj[User, String](classOf[User], null, rs)
+			SqliteDataSourceHolder.retrunBack()
 			println(rec)
 		})
 	}
