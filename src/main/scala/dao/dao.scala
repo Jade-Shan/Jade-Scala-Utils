@@ -40,11 +40,11 @@ trait Dao[T <: Record[K], K] {
 
 	def queryModel(sql: String, values: Seq[Any]): Seq[T]
 
+	def queryModel(queryStr: String, params: Map[String, Any]): Seq[T]
+
+	def queryModel(queryStr: String, showCols: Set[String], params: Map[String, Any]): Seq[T]
+
 	def queryModel(sql: String, showCols: Set[String], values: Seq[Any]): Seq[T]
-
-	def queryModel(queryStr: String, params: Map[String, AnyRef]): Seq[T]
-
-	def queryModel(queryStr: String, showCols: Set[String], params: Map[String, AnyRef]): Seq[T]
 
 	def query(sql: String): Seq[Map[String, AnyRef]]
 
@@ -52,17 +52,19 @@ trait Dao[T <: Record[K], K] {
 
 	def query(sql: String, values: Seq[Any]): Seq[Map[String, AnyRef]]
 
-	def query(sql: String, showCols: Set[String], values: Seq[Any]): Seq[Map[String, AnyRef]]
-
 	def query(queryStr: String, params: Map[String, AnyRef]): Seq[Map[String, AnyRef]]
 
-	def query(queryStr: String, showCols: Set[String], params: Map[String, Object]): Seq[Map[String, AnyRef]]
+	def query(queryStr: String, showCols: Set[String], params: Map[String, AnyRef]): Seq[Map[String, AnyRef]]
+
+	def query(sql: String, showCols: Set[String], values: Seq[Any]): Seq[Map[String, AnyRef]]
 
 	def getById(id: K): Try[T]
 
 	def getById(id: K, showCols: Set[String]): Try[T]
 
-	def executeUpdate(sql: String, params: Map[String, AnyRef]): Try[Int]
+	def executeUpdate(queryStr: String, params: Map[String, AnyRef]): Try[Int]
+
+	def executeUpdate(sql: String, values: Seq[Any]): Try[Int]
 
 	def insert(model: T): Try[Unit]
 
@@ -167,7 +169,7 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 	private[this] def baseQuery( //
 		sql: String, showCols: Set[String], values: Seq[Any] //
 	): ResultSet = {
-		logDebug("sql-query: {} \n     cols: {} \n     vals: {}", //
+		logDebug(" sql-query: {} \n      cols: {} \n      vals: {}", //
 				sql, showCols, values)
 		val conn = datasource.connection()
 		val ps = ORMUtil.setQueryValues( //
@@ -176,10 +178,19 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 		ps.executeQuery()
 	}
 
-	def executeUpdate(sql: String, params: Map[String, AnyRef]): Try[Int] = {
+	def executeUpdate(queryStr: String, params: Map[String, AnyRef]): Try[Int] = {
+		val values = ORMUtil.parseValues(queryStr, params)
+		val sql = ORMUtil.parseQuery(queryStr)
+		executeUpdate(sql, values)
+	}
+	
+	def executeUpdate(sql: String, values: Seq[Any]): Try[Int] = {
+		logDebug("sql-update: {} \n     vals: {}", //
+				sql, values)
 		val conn = datasource.connection()
 		val ps = conn.get.prepareStatement(sql)
 		val result = try {
+			ORMUtil.setQueryValues(ps, values)
 			Success(ps.executeUpdate())
 		} catch { case e: Exception => Failure(e) }
 		if (!datasource.isInTransaction()) {

@@ -11,15 +11,17 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
 import org.junit.runner.RunWith
 
+import jadeutils.comm.dao.DialectSqlite.{dialect => SqliteDialect}
+
 @RunWith(classOf[JUnitRunner])
 class BaseConnectionPoolTest extends FunSuite with Logging {
 
 	val props = new Properties();
 	props.setProperty("dataSourceClassName", "org.sqlite.SQLiteDataSource");
-	props.setProperty("jdbcUrl", "jdbc:sqlite:db-test-03.db");
+	props.setProperty("jdbcUrl", "jdbc:sqlite:db-test-03");
 	props.setProperty("autoCommit", "false");
 	props.setProperty("maximumPoolSize", "5");
-	val testPool = new HikariDataSourcePool(props)
+	val testPool = new HikariDataSourcePool(props, SqliteDialect)
 
 	test("Test-DbConnection") {
 		logDebug("======== Test Creating session =============")

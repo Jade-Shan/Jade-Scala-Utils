@@ -15,10 +15,13 @@ import scala.util.Failure
 import scala.util.Success
 import java.util.Date
 
+import jadeutils.comm.dao.DialectSqlite.{dialect => SqliteDialect}
+
 object SqliteEnv extends Logging {
 	val dbName = "db-test-01"
 	val tableName = "testuser"
 	val dbProps = new Properties();
+//	dbProps.setProperty("dialect", classOf[DialectSqlite].getName)
 	dbProps.setProperty("dataSourceClassName", "org.sqlite.SQLiteDataSource")
 	dbProps.setProperty("jdbcUrl", "jdbc:sqlite:" + dbName)
 	dbProps.setProperty("autoCommit", "true")
@@ -64,7 +67,7 @@ class User(_id: String, _name: String, _createTime: Date, _lastChangeTime: Date)
 	override def toString: String = s"User($id, $name, $createTime, $lastChangeTime)"
 }
 
-object SqliteDataSourcePool extends HikariDataSourcePool(SqliteEnv.dbProps) { }
+object SqliteDataSourcePool extends HikariDataSourcePool(SqliteEnv.dbProps, SqliteDialect) { }
 
 object SqliteDataSourceHolder extends DataSourcetHolder(SqliteDataSourcePool, TransIso.TS_SERIALIZABLE)
 

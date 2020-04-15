@@ -14,6 +14,8 @@ import scala.util.Try
 import scala.util.Success
 import scala.util.Failure
 
+import jadeutils.comm.dao.DialectMySQL.{dialect => MySQLDialect}
+
 object MysqlEnv extends Logging {
 	val dbName = "db-test-01"
 	val tableName = "testuser"
@@ -59,7 +61,7 @@ object MysqlEnv extends Logging {
 	}
 }
 
-object MysqlDataSourcePool extends HikariDataSourcePool(MysqlEnv.dbProps) { }
+object MysqlDataSourcePool extends HikariDataSourcePool(MysqlEnv.dbProps, MySQLDialect) { }
 
 object MysqlDataSourceHolder extends DataSourcetHolder(MysqlDataSourcePool, TransIso.TS_SERIALIZABLE)
 

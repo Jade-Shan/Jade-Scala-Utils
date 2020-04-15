@@ -20,22 +20,21 @@ trait Dialect {
 	def sqlTableName(database: String, table: String): String
 }
 
-class DialectDefaultImpl extends Dialect {
-	
+class DialectDefault extends Dialect {
 	def sqlTableName(database: String, table: String) = {
 		if (isBlankStr(database)) s"`$table`" else s"`$database`.`$table`"
 	}
-
 }
+object DialectDefault { var dialect = new DialectDefault }
 
-object DialectDefault extends DialectDefaultImpl
 
-object DialectSqlite extends DialectDefaultImpl {
-	
+class DialectSqlite extends DialectDefault {
 	override def sqlTableName(database: String, table: String) =  s"`$table`"
 }
+object DialectSqlite { var dialect = new DialectSqlite }
 
-object DialectMySQL extends DialectDefaultImpl
+class DialectMySQL extends DialectDefault
+object DialectMySQL { var dialect = new DialectMySQL }
 
 trait DataSourcePool {
 	
@@ -52,16 +51,16 @@ trait DataSourcePool {
 }
 
 
-class HikariDataSourcePool(val props: Properties) extends DataSourcePool with Logging {
+class HikariDataSourcePool(var props: Properties, var _dialect: Dialect) extends DataSourcePool with Logging {
 
-	val sqlDialectName = props.getProperty("dialect")
-	val _dialect: Dialect = try {
-		val d = Class.forName(sqlDialectName).getDeclaredConstructor(//
-				Seq.empty[Class[_]]: _*).newInstance()
-		d.asInstanceOf[Dialect]
-	} catch {
-		case e: Exception => DialectDefault
-	}
+//	val sqlDialectName = props.getProperty("dialect")
+//	val _dialect: Dialect = try {
+//		val d = Class.forName(sqlDialectName).getDeclaredConstructor(//
+//				Seq.empty[Class[_]]: _*).newInstance()
+//		d.asInstanceOf[Dialect]
+//	} catch {
+//		case e: Exception => new DialectDefault
+//	}
 
 	val cfg = new HikariConfig(props)
 	val ds = new HikariDataSource(cfg)

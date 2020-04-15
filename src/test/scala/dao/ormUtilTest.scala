@@ -1,6 +1,7 @@
 package jadeutils.comm.dao
 
 import org.scalatest.junit.JUnitRunner
+
 import org.scalatest.FunSuite
 import org.junit.runner.RunWith
 
@@ -9,6 +10,8 @@ import jadeutils.common.Logging
 import java.sql.SQLException
 import java.util.Date
 
+import jadeutils.comm.dao.DialectSqlite.{dialect => SqliteDialect}
+
 @RunWith(classOf[JUnitRunner])
 class ORMUtilTest extends FunSuite with Logging {
 
@@ -16,7 +19,7 @@ class ORMUtilTest extends FunSuite with Logging {
 
 	test("Test-00-DBTable-Annotation") {
 		logDebug("------------------------")
-		val tablename = ORMUtil.getTableName[User, String](classOf[User], DialectSqlite)
+		val tablename = ORMUtil.getTableName[User, String](classOf[User], SqliteDialect)
 		assert(tablename.isSuccess)
 		logDebug("------------------------" + tablename.get)
 //		assert("`db-test-01`.`testuser`" == tablename.get)
@@ -87,7 +90,7 @@ class ORMUtilTest extends FunSuite with Logging {
 			//
 			val showCols = Set.empty[String]
 			val entryClass = classOf[User]
-			val table = ORMUtil.getTableName[User, String](entryClass, DialectSqlite).get
+			val table = ORMUtil.getTableName[User, String](entryClass, SqliteDialect).get
 			val columns = ORMUtil.getColumns[User, String](entryClass, showCols)
 			val colStr = { for (s <- columns) yield "`%s`".format(s) }.mkString(",")
 			val sql = s"select $colStr from $table where id = ?"			
@@ -101,8 +104,8 @@ class ORMUtilTest extends FunSuite with Logging {
 			logDebug(obj.toString)
 			assert("1" == obj.id)
 			assert("Jade" == obj.name)
-//			assert(now == obj.createTime)
-//			assert(now == obj.lastChangeTime)
+//			assert(now.getTime == obj.createTime.getTime)
+//			assert(now.getTime == obj.lastChangeTime.getTime)
 		})
 	}
 
@@ -110,7 +113,7 @@ class ORMUtilTest extends FunSuite with Logging {
 		SqliteEnv.testInEnv(() => {
 			val now = new Date(System.currentTimeMillis())
 			val user = new User("1", "Jade", now, now)
-			val table = ORMUtil.getTableName[User, String](classOf[User], DialectSqlite).get
+			val table = ORMUtil.getTableName[User, String](classOf[User], SqliteDialect).get
 			val seq = ORMUtil.obj2kv[User, String](classOf[User], user, Set.empty[String])
 			logDebug(seq.toString)
 			val xx = seq.unzip
