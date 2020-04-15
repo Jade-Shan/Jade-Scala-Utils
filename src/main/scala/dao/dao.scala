@@ -194,7 +194,7 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 	}
 	
 	def insert(model: T): Try[Int] = {
-		val table = ORMUtil.getTableName[User, String](classOf[User], datasource.dialect).get
+		val table = ORMUtil.getTableName[T, K](entryClass, datasource.dialect).get
 		val seq = ORMUtil.obj2kv[T,K](entryClass, model, Set.empty[String])
 		val xx = seq.unzip
 		val colStr = { for (s <- xx._1) yield "`%s`".format(s) }.mkString(",")
@@ -205,7 +205,7 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 	}
 
 	def update(model: T): Try[Int] = {
-		val table = ORMUtil.getTableName[User, String](classOf[User], datasource.dialect).get
+		val table = ORMUtil.getTableName[T, K](entryClass, datasource.dialect).get
 		val seq = ORMUtil.obj2kv[T,K](entryClass, model, Set.empty[String])
 		val xx = seq.unzip
 		val colStr = { for (s <- xx._1) yield "`%s`=?".format(s) }.mkString(",")
