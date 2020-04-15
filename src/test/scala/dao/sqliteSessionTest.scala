@@ -19,10 +19,10 @@ object SqliteEnv extends Logging {
 	val dbName = "db-test-01"
 	val tableName = "testuser"
 	val dbProps = new Properties();
-	dbProps.setProperty("dataSourceClassName", "org.sqlite.SQLiteDataSource");
-	dbProps.setProperty("jdbcUrl", "jdbc:sqlite:" + dbName);
-	dbProps.setProperty("autoCommit", "true");
-	dbProps.setProperty("maximumPoolSize", "10");
+	dbProps.setProperty("dataSourceClassName", "org.sqlite.SQLiteDataSource")
+	dbProps.setProperty("jdbcUrl", "jdbc:sqlite:" + dbName)
+	dbProps.setProperty("autoCommit", "true")
+	dbProps.setProperty("maximumPoolSize", "10")
 
 	def testInEnv(opts: () => Unit) {
 		val conn = SqliteDataSourcePool.borrow().get
@@ -31,7 +31,9 @@ object SqliteEnv extends Logging {
 			"drop table if exists " + SqliteEnv.tableName + "" //
 		).executeUpdate()
 		conn.prepareStatement( //
-			"create table " + SqliteEnv.tableName + " (id, name, create_time date, last_change_time date)" //
+			"create table " + SqliteEnv.tableName + //
+			" (id VARCHAR(30), name VARCHAR(30), " + //
+			" create_time DATETIME, last_change_time DATETIME)" //
 		).executeUpdate()
 		if (!conn.getAutoCommit) conn.commit()
 		SqliteDataSourcePool.retrunBack(conn)
@@ -95,7 +97,7 @@ class SqliteTestPoolDao(dataSource: DataSourcetHolder) extends Logging {
 		logTrace("before insert")
 		val res = if (null != model && null != model.id) {
 			val prep = dataSource.connection.get.prepareStatement( //
-					"insert into " + SqliteEnv.tableName + " values (?, ?)")
+					"insert into " + SqliteEnv.tableName + " (id, name) values (?, ?)")
 
 			prep.setString(1, model.id);
 			prep.setString(2, model.name);

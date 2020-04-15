@@ -36,8 +36,11 @@ object MysqlEnv extends Logging {
 			).executeUpdate();
 		conn.prepareStatement(//
 				"CREATE TABLE `" + MysqlEnv.dbName + "`.`" + MysqlEnv.tableName + "` " + //
-			"(`id` INT NOT NULL, `name` VARCHAR(45) default '', PRIMARY KEY (`id`)) " + //
-			" ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4"
+			"(`id` INT NOT NULL, `name` VARCHAR(45) default '', " + //
+			" `create_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " + //
+			" `last_change_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP " + //
+			" ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (`id`)) " + //
+			" ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4 "
 		).executeUpdate();
 		// if (!conn.getAutoCommit) conn.commit()
 		MysqlDataSourcePool.retrunBack(conn)
@@ -69,8 +72,8 @@ class MysqlTestPoolDao(dataSource: DataSourcetHolder) extends Logging {
 			throw new RuntimeException("User id Cannot be null")
 		}
 		val result: Option[User] = {
-			val prep = dataSource.connection.get.prepareStatement("select * from " + //
-					MysqlEnv.tableName + " where id = ?;")
+			val prep = dataSource.connection.get.prepareStatement(//
+					"select * from " + MysqlEnv.tableName + " where id = ? ")
 			prep.setString(1, id);
 			val rs = prep.executeQuery()
 			val rec = if (rs.next) {
@@ -88,7 +91,9 @@ class MysqlTestPoolDao(dataSource: DataSourcetHolder) extends Logging {
 	def insert(model: User): Try[Unit] = {
 		logTrace("before insert")
 		val res = if (null != model && null != model.id) {
-			val prep = dataSource.connection.get.prepareStatement("insert into " + MysqlEnv.tableName + " values (?, ?);")
+			val prep = dataSource.connection.get.prepareStatement( //
+					"insert into " + MysqlEnv.tableName + //
+					" (id, name) values (?, ?)")
 
 			prep.setString(1, model.id);
 			prep.setString(2, model.name);
