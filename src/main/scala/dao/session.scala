@@ -159,44 +159,30 @@ abstract class BaseTransactionService extends Logging {
 	
 	def transaction = dataSource.transaction()
 
-	@throws(classOf[Throwable])
-	def withTransaction[T](nesting: TransNesting, iso: TransIso)(callFunc: => Try[T])(implicit m: TypeTag[T]): T = //
+	def withTransaction[T](nesting: TransNesting, iso: TransIso)(callFunc: => Try[T])//
+	(implicit m: TypeTag[T]): Try[T]= //
 	{ // 隐式参数自动匹配被事务包裹函数的返回类型
-		warpSession(nesting, iso, callFunc) match {
-			case Success(r) => r
-			case Failure(e: Throwable) => throw e
-		}
+		warpSession(nesting, iso, callFunc)
 	}
 
-	@throws(classOf[Throwable])
-	def withTransaction[T](nesting: TransNesting)(callFunc: => Try[T])(implicit m: TypeTag[T]): T = //
+	def withTransaction[T](nesting: TransNesting)(callFunc: => Try[T])//
+	(implicit m: TypeTag[T]): Try[T] = //
 	{ // 隐式参数自动匹配被事务包裹函数的返回类型
-		warpSession(nesting, dataSource.defaultIsolation, callFunc) match {
-			case Success(r) => r
-			case Failure(e: Throwable) => throw e
-		}
+		warpSession(nesting, dataSource.defaultIsolation, callFunc)
 	}
 
-	@throws(classOf[Throwable])
-	def withTransaction[T](iso: TransIso)(callFunc: => Try[T])(implicit m: TypeTag[T]): T = //
+	def withTransaction[T](iso: TransIso)(callFunc: => Try[T])//
+	(implicit m: TypeTag[T]): Try[T]= //
 	{ // 隐式参数自动匹配被事务包裹函数的返回类型
-		warpSession(TS_PG_REQUIRED, iso, callFunc) match {
-			case Success(r) => r
-			case Failure(e: Throwable) => throw e
-		}
+		warpSession(TS_PG_REQUIRED, iso, callFunc)
 	}
 
-	@throws(classOf[Throwable])
-	def withTransaction[T](callFunc: => Try[T])(implicit m: TypeTag[T]): T = {
-		val transRes = warpSession(TS_PG_REQUIRED, dataSource.defaultIsolation, callFunc) 
-		logTrace("before trans end, trans-result is : ", transRes)
-		transRes match {
-			case Success(r) => r
-			case Failure(e: Throwable) => throw e
-		}
+	def withTransaction[T](callFunc: => Try[T])(implicit m: TypeTag[T]): Try[T] = {
+		warpSession(TS_PG_REQUIRED, dataSource.defaultIsolation, callFunc) 
 	}
 
-	private def warpSession[T](nesting: TransNesting, iso: TransIso, callFunc: => Try[T])(implicit m: TypeTag[T]): Try[T] = //
+	private def warpSession[T](nesting: TransNesting, iso: TransIso, callFunc: => Try[T])//
+	(implicit m: TypeTag[T]): Try[T] = //
 	{
 		if (dataSource.isBroken()) {
 			logError("Lost Connection from database")
@@ -212,8 +198,8 @@ abstract class BaseTransactionService extends Logging {
 		} catch {
 			case t: Throwable => Failure(t)
 		}
-			
 
+		logTrace("before trans end, trans-result is : ", callRes)
 		endTransNesting(callRes)             // 处理异常并返回到外层事务
 	}
 

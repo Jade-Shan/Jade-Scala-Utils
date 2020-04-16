@@ -9,6 +9,9 @@ import jadeutils.common.EnvPropsComponent
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
 import org.junit.runner.RunWith
+import scala.util.Try
+import scala.util.Success
+import scala.util.Failure
 
 class TestSqliteService extends BaseTransactionService {
 	
@@ -17,20 +20,24 @@ class TestSqliteService extends BaseTransactionService {
   val dataSource: DataSourcetHolder = SqliteDataSourceHolder
 }
 
-//object UserSqliteService extends TestSqliteService {
-//
-//	private val dao = new MysqlTestPoolDao(SqliteDataSourceHolder)
-//
-//	def getUser(id: String): Option[User] = withTransaction { dao.getById(id) }
-//
-//	def insertUser(user: User) { withTransaction { dao.insert(user) } }
-//
-//	def insertUserList(userlist: List[User]) {
-//		withTransaction {
-//			userlist.foreach((user) => { dao.insert(user) })
-//		}
-//	}
-//}
+object UserSqliteService extends TestSqliteService {
+
+	private val dao = new SqliteImplTestDao(SqliteDataSourceHolder)
+
+	def getUser(id: String): Try[Option[User]] = withTransaction {
+		 dao.getById(id) 
+	}
+
+	def insertUser(user: User) = withTransaction { dao.insert(user) }
+
+	def insertUserList(userlist: List[User]) = withTransaction {
+		val ll = for (u <- userlist) yield dao.insert(u)
+		val el = ll.filter(_.isFailure).map(_.failed.get)
+		val sl = ll.filter(_.isSuccess).map(_.get)
+		if (el.size > 0) Failure(el(0)) else Success(sl)
+	}
+	
+}
 
 @RunWith(classOf[JUnitRunner])
 class SqliteTransactionTest extends FunSuite with Logging {
