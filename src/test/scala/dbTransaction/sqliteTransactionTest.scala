@@ -17,20 +17,20 @@ class TestSqliteService extends BaseTransactionService {
   val dataSource: DataSourcetHolder = SqliteDataSourceHolder
 }
 
-object UserSqliteService extends TestSqliteService {
-
-	private val dao = new MysqlTestPoolDao(SqliteDataSourceHolder)
-
-	def getUser(id: String): Option[User] = withTransaction { dao.getById(id) }
-
-	def insertUser(user: User) { withTransaction { dao.insert(user) } }
-
-	def insertUserList(userlist: List[User]) {
-		withTransaction {
-			userlist.foreach((user) => { dao.insert(user) })
-		}
-	}
-}
+//object UserSqliteService extends TestSqliteService {
+//
+//	private val dao = new MysqlTestPoolDao(SqliteDataSourceHolder)
+//
+//	def getUser(id: String): Option[User] = withTransaction { dao.getById(id) }
+//
+//	def insertUser(user: User) { withTransaction { dao.insert(user) } }
+//
+//	def insertUserList(userlist: List[User]) {
+//		withTransaction {
+//			userlist.foreach((user) => { dao.insert(user) })
+//		}
+//	}
+//}
 
 @RunWith(classOf[JUnitRunner])
 class SqliteTransactionTest extends FunSuite with Logging {
@@ -38,12 +38,12 @@ class SqliteTransactionTest extends FunSuite with Logging {
 	test("Test-trans-00-trans-commit") {
 		SqliteEnv.testInEnv(() => {
 			logInfo("------------------------test auto commit\n")
-			val user = new User("1", "jade")
-			UserSqliteService.insertUser(user)
-			val result = UserSqliteService.getUser(user.id)
-			assert(result.isDefined)
-			logInfo("--------userid {} is {}", user.id, result.get)
-			assert("jade" == UserSqliteService.getUser(user.id).get.name)
+//			val user = new User("1", "jade")
+//			UserSqliteService.insertUser(user)
+//			val result = UserSqliteService.getUser(user.id)
+//			assert(result.isDefined)
+//			logInfo("--------userid {} is {}", user.id, result.get)
+//			assert("jade" == UserSqliteService.getUser(user.id).get.name)
 		})
 	} 
 
@@ -65,7 +65,7 @@ class SqliteTransactionTest extends FunSuite with Logging {
 //			assert("yun"   == UserSqliteService.getUser("2").get.name)
 //			assert("wendy" == UserSqliteService.getUser("3").get.name)
 //			assert("wen"    == UserSqliteService.getUser("4").get.name)
-			UserSqliteService.insertUser(new User(null, "tiantian"))
+//			UserSqliteService.insertUser(new User(null, "tiantian"))
 //			assert(UserSqliteService.getUser("1").isEmpty)
 //			assert(UserSqliteService.getUser("2").isEmpty)
 //			assert(UserSqliteService.getUser("3").isEmpty)

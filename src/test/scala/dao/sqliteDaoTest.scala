@@ -33,8 +33,9 @@ class SqliteDaoImplTest extends FunSuite with Logging {
 			val u = dao.getById("1")
 			logDebug("------------after load: {}", u)
 			assert(u.isSuccess)
-			assert(u.get.id == "1")
-			assert(u.get.name == "Jade")
+			assert(u.get.isDefined)
+			assert(u.get.get.id == "1")
+			assert(u.get.get.name == "Jade")
 			logDebug("all : {}", dao.query("select * from testuser where 1=1"))
 		})
 	}
@@ -48,8 +49,9 @@ class SqliteDaoImplTest extends FunSuite with Logging {
 			val u = dao.getById("1")
 			logDebug("------------after load: {}", u)
 			assert(u.isSuccess)
-			assert(u.get.id == "1")
-			assert(u.get.name == "Jade")
+			assert(u.get.isDefined)
+			assert(u.get.get.id == "1")
+			assert(u.get.get.name == "Jade")
 
 			user.name = "Jade Update"
 			dao.update(user)
@@ -57,8 +59,9 @@ class SqliteDaoImplTest extends FunSuite with Logging {
 			val v = dao.getById("1")
 			logDebug("------------after load: {}", v)
 			assert(v.isSuccess)
-			assert(v.get.id == "1")
-			assert(v.get.name == "Jade Update")
+			assert(u.get.isDefined)
+			assert(v.get.get.id == "1")
+			assert(v.get.get.name == "Jade Update")
 		})
 	}
 
@@ -71,8 +74,9 @@ class SqliteDaoImplTest extends FunSuite with Logging {
 			val u = dao.getById("1")
 			logDebug("------------after load: {}", u)
 			assert(u.isSuccess)
-			assert(u.get.id == "1")
-			assert(u.get.name == "Jade")
+			assert(u.get.isDefined)
+			assert(u.get.get.id == "1")
+			assert(u.get.get.name == "Jade")
 
 			user.name = "Jade Update"
 			dao.insertOrUpdate(user)
@@ -80,8 +84,9 @@ class SqliteDaoImplTest extends FunSuite with Logging {
 			val v = dao.getById("1")
 			logDebug("------------after load: {}", v)
 			assert(v.isSuccess)
-			assert(v.get.id == "1")
-			assert(v.get.name == "Jade Update")
+			assert(u.get.isDefined)
+			assert(v.get.get.id == "1")
+			assert(v.get.get.name == "Jade Update")
 		})
 	}
 }
