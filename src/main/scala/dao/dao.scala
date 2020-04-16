@@ -34,33 +34,33 @@ abstract class Record[K](_id: K, _createTime: Date, _lastChangeTime: Date) {
 
 trait Dao[T <: Record[K], K] {
 
-	def queryModel(sql: String): Seq[T]
+	def queryModel(sql: String): Try[Seq[T]]
 
-	def queryModel(sql: String, showCols: Set[String]): Seq[T]
+	def queryModel(sql: String, showCols: Set[String]): Try[Seq[T]]
 
-	def queryModel(sql: String, values: Seq[Any]): Seq[T]
+	def queryModel(sql: String, values: Seq[Any]): Try[Seq[T]]
 
-	def queryModel(queryStr: String, params: Map[String, Any]): Seq[T]
+	def queryModel(queryStr: String, params: Map[String, Any]): Try[Seq[T]]
 
-	def queryModel(queryStr: String, showCols: Set[String], params: Map[String, Any]): Seq[T]
+	def queryModel(queryStr: String, showCols: Set[String], params: Map[String, Any]): Try[Seq[T]]
 
-	def queryModel(sql: String, showCols: Set[String], values: Seq[Any]): Seq[T]
+	def queryModel(sql: String, showCols: Set[String], values: Seq[Any]): Try[Seq[T]]
 
-	def query(sql: String): Seq[Map[String, AnyRef]]
+	def query(sql: String): Try[Seq[Map[String, AnyRef]]]
 
-	def query(sql: String, showCols: Set[String]): Seq[Map[String, AnyRef]]
+	def query(sql: String, showCols: Set[String]): Try[Seq[Map[String, AnyRef]]]
 
-	def query(sql: String, values: Seq[Any]): Seq[Map[String, AnyRef]]
+	def query(sql: String, values: Seq[Any]): Try[Seq[Map[String, AnyRef]]]
 
-	def query(queryStr: String, params: Map[String, Any]): Seq[Map[String, AnyRef]]
+	def query(queryStr: String, params: Map[String, Any]): Try[Seq[Map[String, AnyRef]]]
 
-	def query(queryStr: String, showCols: Set[String], params: Map[String, Any]): Seq[Map[String, AnyRef]]
+	def query(queryStr: String, showCols: Set[String], params: Map[String, Any]): Try[Seq[Map[String, AnyRef]]]
 
-	def query(sql: String, showCols: Set[String], values: Seq[Any]): Seq[Map[String, AnyRef]]
+	def query(sql: String, showCols: Set[String], values: Seq[Any]): Try[Seq[Map[String, AnyRef]]]
 
-	def getById(id: K): Try[T]
+	def getById(id: K): Try[Option[T]]
 
-	def getById(id: K, showCols: Set[String]): Try[T]
+	def getById(id: K, showCols: Set[String]): Try[Option[T]]
 
 	def executeUpdate(queryStr: String, params: Map[String, Any]): Try[Int]
 
@@ -81,119 +81,137 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 	val params: Array[Type] = paramType.getActualTypeArguments()
 	val entryClass: Class[T] = params(0).asInstanceOf[Class[T]]
 
-	def getById(id: K): Try[T] = getById(id, Set.empty[String])
+	def getById(id: K): Try[Option[T]] = getById(id, Set.empty[String])
 
-	def getById(id: K, showCols: Set[String]): Try[T] = {
-		if (null == id) {
-			Failure(new RuntimeException("id cannot be null"))
-		} else {
-			val table = ORMUtil.getTableName[T, K](entryClass, datasource.dialect).get
-			val columns = ORMUtil.getColumns[T, K](entryClass, showCols)
-			val colStr = { for (s <- columns) yield "`%s`".format(s) }.mkString(",")
-			val sql = s"select $colStr from $table where id = ?"
-			val recs = queryModel(sql, Seq(id))
-			if (recs.size == 1) Success(recs(0)) else if (recs.size < 1) {
-				Failure(new RuntimeException("no match rec"))
-			} else Failure(new RuntimeException("rec with same primary key"))
+	def getById(id: K, showCols: Set[String]): Try[Option[T]] = if (null == id) {
+		Failure(new RuntimeException("id cannot be null"))
+	} else try {
+		val table = ORMUtil.getTableName[T, K](entryClass, datasource.dialect).get
+		val columns = ORMUtil.getColumns[T, K](entryClass, showCols)
+		val colStr = { for (s <- columns) yield "`%s`".format(s) }.mkString(",")
+		val sql = s"select $colStr from $table where id = ?"
+		queryModel(sql, Seq(id)) match {
+			case Failure(f) => Failure(f)
+			case Success(recs) => {
+				if (recs.size == 1) Success(Some(recs(0))) else if (recs.size < 1) {
+					Success(None)
+				} else Failure(new RuntimeException("rec with same primary key"))
+			}
 		}
+	} catch {
+		case e: Exception => Failure(e)
 	}
 
-	def queryModel(sql: String): Seq[T] = {
+	def queryModel(sql: String): Try[Seq[T]] = {
 		queryModel(sql, Set.empty[String], Map.empty[String, Any])
 	}
 
-	def queryModel(sql: String, showCols: Set[String]): Seq[T] = {
+	def queryModel(sql: String, showCols: Set[String]): Try[Seq[T]] = {
 		queryModel(sql, showCols, Map.empty[String, Any])
 	}
 
-	def queryModel(sql: String, values: Seq[Any]): Seq[T] = {
+	def queryModel(sql: String, values: Seq[Any]): Try[Seq[T]] = {
 		queryModel(sql, Set.empty[String], values)
 	}
 
-	def queryModel(queryStr: String, params: Map[String, Any]): Seq[T] = {
+	def queryModel(queryStr: String, params: Map[String, Any]): Try[Seq[T]] = {
 		queryModel(queryStr, Set.empty[String], params)
 	}
 
 	def queryModel( //
 		queryStr: String, showCols: Set[String], params: Map[String, Any] //
-	): Seq[T] = {
+	): Try[Seq[T]] = {
 		val values = ORMUtil.parseValues(queryStr, params)
 		val sql = ORMUtil.parseQuery(queryStr)
 		queryModel(sql, showCols, values)
 	}
 
-	def queryModel(sql: String, showCols: Set[String], values: Seq[Any]): Seq[T] = {
-		val rs = baseQuery(sql, showCols, values)
-		val result = ORMUtil.allRow2obj[T, K](entryClass, showCols, rs)
-		if (!datasource.isInTransaction()) {
-			// close jdbc connection if transaction is over
-			datasource.retrunBack()
+	def queryModel(sql: String, showCols: Set[String], values: Seq[Any]): Try[Seq[T]] = {
+		baseQuery(sql, showCols, values) match {
+			case Failure(f) => Failure(f)
+			case Success(rs) => {
+				val result = ORMUtil.allRow2obj[T, K](entryClass, showCols, rs)
+				if (!datasource.isInTransaction()) {
+					// close jdbc connection if transaction is over
+					datasource.retrunBack()
+				}
+				Success(result)
+			}
 		}
-		result
 	}
 
-	def query(sql: String): Seq[Map[String, AnyRef]] = {
+	def query(sql: String): Try[Seq[Map[String, AnyRef]]] = {
 		query(sql, Set.empty[String])
 	}
 
-	def query(sql: String, showCols: Set[String]): Seq[Map[String, AnyRef]] = {
+	def query(sql: String, showCols: Set[String]): Try[Seq[Map[String, AnyRef]]] = {
 		query(sql, showCols, Seq.empty[Any])
 	}
 
-	def query(sql: String, values: Seq[Any]): Seq[Map[String, AnyRef]] = {
+	def query(sql: String, values: Seq[Any]): Try[Seq[Map[String, AnyRef]]] = {
 		query(sql, Set.empty[String], values)
 	}
 
-	def query(queryStr: String, params: Map[String, Any]): Seq[Map[String, AnyRef]] = {
+	def query(queryStr: String, params: Map[String, Any]): Try[Seq[Map[String, AnyRef]]] = {
 		this.query(queryStr, Set.empty[String], params)
 	}
 
 	def query( //
 		queryStr: String, showCols: Set[String], params: Map[String, Any] //
-	): Seq[Map[String, AnyRef]] = {
+	): Try[Seq[Map[String, AnyRef]]] = {
 		val values = ORMUtil.parseValues(queryStr, params)
 		val sql = ORMUtil.parseQuery(queryStr)
 		query(sql, showCols, values)
 	}
 
 	def query( //
-		sql: String, showCols: Set[String], values: Seq[Any] //
-	): Seq[Map[String, AnyRef]] = {
-		val rs = baseQuery(sql, showCols, values)
-		val result = ORMUtil.allRow2map(showCols, rs)
-		if (!datasource.isInTransaction()) {
-			// close jdbc connection if transaction is over
-			datasource.retrunBack()
+	sql: String, showCols: Set[String], values: Seq[Any] //
+	): Try[Seq[Map[String, AnyRef]]] = {
+		baseQuery(sql, showCols, values) match {
+			case Failure(f) => Failure(f)
+			case Success(rs) => {
+				val result = ORMUtil.allRow2map(showCols, rs)
+						if (!datasource.isInTransaction()) {
+							// close jdbc connection if transaction is over
+							datasource.retrunBack()
+						}
+						Success(result)
+			}
 		}
-		result
 	}
 
 	private[this] def baseQuery( //
 		sql: String, showCols: Set[String], values: Seq[Any] //
-	): ResultSet = {
+	): Try[ResultSet] = try {
 		logDebug("\n sql-query: {} \n      cols: {} \n      vals: {}", //
 				sql, showCols, values)
 		val conn = datasource.connection()
 		val ps = ORMUtil.setQueryValues( //
 			conn.get.prepareStatement(sql), values
 		)
-		ps.executeQuery()
+		val rs = ps.executeQuery()
+		Success(rs)
+	} catch {
+		case e: Exception => Failure(e)
 	}
 
 	def insertOrUpdate(model: T): Try[Int] = {
-		val table = ORMUtil.getTableName[T, K](entryClass, datasource.dialect).get 
+		val table = ORMUtil.getTableName[T, K](entryClass, datasource.dialect).get
 		val sql = s"select count(1) as c from $table where id = ?"
-		val recs = query(sql, Seq(model.id))
-		val count = if (recs.length < 1) 0 else if (!recs(0).contains("c")) 0 else {
-			recs(0).getOrElse("c", 0) match {
-				case n: Int => n
-				case n: Long => n
-				case _ => 0
+		query(sql, Seq(model.id)) match {
+			case Failure(f) => Failure(f)
+			case Success(recs) => {
+				val count = if (recs.length > 0 && recs(0).contains("c")) {
+					recs(0).getOrElse("c", 0) match {
+						case n: Int => n
+						case n: Long => n
+						case _ => 0
+					}
+				} else 0
+				logDebug("insertOrUpdate old rec: {}, count: {}", recs, count)
+				if (count > 0) update(model) else insert(model)
 			}
 		}
-		logDebug("insertOrUpdate old rec: {}, count: {}", recs, count)
-		if (count > 0) update(model) else insert(model)
-			
 	}
 	
 	def insert(model: T): Try[Int] = {

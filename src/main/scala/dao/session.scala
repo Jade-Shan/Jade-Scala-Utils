@@ -160,7 +160,7 @@ abstract class BaseTransactionService extends Logging {
 	def transaction = dataSource.transaction()
 
 	@throws(classOf[Throwable])
-	def withTransaction[T](nesting: TransNesting, iso: TransIso)(callFunc: => T)(implicit m: TypeTag[T]): T = //
+	def withTransaction[T](nesting: TransNesting, iso: TransIso)(callFunc: => Try[T])(implicit m: TypeTag[T]): T = //
 	{ // 隐式参数自动匹配被事务包裹函数的返回类型
 		warpSession(nesting, iso, callFunc) match {
 			case Success(r) => r
@@ -169,7 +169,7 @@ abstract class BaseTransactionService extends Logging {
 	}
 
 	@throws(classOf[Throwable])
-	def withTransaction[T](nesting: TransNesting)(callFunc: => T)(implicit m: TypeTag[T]): T = //
+	def withTransaction[T](nesting: TransNesting)(callFunc: => Try[T])(implicit m: TypeTag[T]): T = //
 	{ // 隐式参数自动匹配被事务包裹函数的返回类型
 		warpSession(nesting, dataSource.defaultIsolation, callFunc) match {
 			case Success(r) => r
@@ -178,7 +178,7 @@ abstract class BaseTransactionService extends Logging {
 	}
 
 	@throws(classOf[Throwable])
-	def withTransaction[T](iso: TransIso)(callFunc: => T)(implicit m: TypeTag[T]): T = //
+	def withTransaction[T](iso: TransIso)(callFunc: => Try[T])(implicit m: TypeTag[T]): T = //
 	{ // 隐式参数自动匹配被事务包裹函数的返回类型
 		warpSession(TS_PG_REQUIRED, iso, callFunc) match {
 			case Success(r) => r
@@ -187,7 +187,7 @@ abstract class BaseTransactionService extends Logging {
 	}
 
 	@throws(classOf[Throwable])
-	def withTransaction[T](callFunc: => T)(implicit m: TypeTag[T]): T = {
+	def withTransaction[T](callFunc: => Try[T])(implicit m: TypeTag[T]): T = {
 		val transRes = warpSession(TS_PG_REQUIRED, dataSource.defaultIsolation, callFunc) 
 		logTrace("before trans end, trans-result is : ", transRes)
 		transRes match {
@@ -196,7 +196,7 @@ abstract class BaseTransactionService extends Logging {
 		}
 	}
 
-	private def warpSession[T](nesting: TransNesting, iso: TransIso, callFunc: => T)(implicit m: TypeTag[T]): Try[T] = //
+	private def warpSession[T](nesting: TransNesting, iso: TransIso, callFunc: => Try[T])(implicit m: TypeTag[T]): Try[T] = //
 	{
 		if (dataSource.isBroken()) {
 			logError("Lost Connection from database")
@@ -208,7 +208,7 @@ abstract class BaseTransactionService extends Logging {
 //		val callRes: Try[T] = util.Try(callFunc)   // 执行具体操作
 		val callRes: Try[T] = try {
 			val cfr = callFunc
-			Success(cfr)   // 执行具体操作
+			cfr   // 执行具体操作
 		} catch {
 			case t: Throwable => Failure(t)
 		}
