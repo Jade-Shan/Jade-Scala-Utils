@@ -185,8 +185,11 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 		val sql = s"select count(1) as c from $table where id = ?"
 		val recs = query(sql, Seq(model.id))
 		val count = if (recs.length < 1) 0 else if (!recs(0).contains("c")) 0 else {
-			val n = recs(0).getOrElse("c", 0)
-			if (!n.isInstanceOf[Int]) 0 else n.asInstanceOf[Int]
+			recs(0).getOrElse("c", 0) match {
+				case n: Int => n
+				case n: Long => n
+				case _ => 0
+			}
 		}
 		logDebug("insertOrUpdate old rec: {}, count: {}", recs, count)
 		if (count > 0) update(model) else insert(model)

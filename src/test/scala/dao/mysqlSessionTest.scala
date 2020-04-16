@@ -38,7 +38,7 @@ object MysqlEnv extends Logging {
 			).executeUpdate();
 		conn.prepareStatement(//
 				"CREATE TABLE `" + MysqlEnv.dbName + "`.`" + MysqlEnv.tableName + "` " + //
-			"(`id` INT NOT NULL, `name` VARCHAR(45) default '', " + //
+			"(`id` VARCHAR(45), `name` VARCHAR(45) default '', " + //
 			" `create_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " + //
 			" `last_change_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP " + //
 			" ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (`id`)) " + //
