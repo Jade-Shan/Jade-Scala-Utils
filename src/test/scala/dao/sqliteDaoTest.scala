@@ -23,9 +23,10 @@ extends JDBCTemplateDao[User, String](dataSource) with Logging {
 @RunWith(classOf[JUnitRunner])
 class SqliteDaoImplTest extends FunSuite with Logging {
 	val dao = new SqliteImplTestDao(SqliteDataSourceHolder)
+	val testEnv = SqliteEnv
 
 	test("Test-dao-impl-test-00-sql-inset-get") {
-		SqliteEnv.testInEnv(() => {
+		testEnv.testInEnv(() => {
 			val now = new Date(System.currentTimeMillis())
 			val user = new User("1", "Jade", now, now)
 			dao.insert(user)
@@ -41,7 +42,7 @@ class SqliteDaoImplTest extends FunSuite with Logging {
 	}
 
 	test("Test-dao-impl-test-01-sql-inset-update") {
-		SqliteEnv.testInEnv(() => {
+		testEnv.testInEnv(() => {
 			val now = new Date(System.currentTimeMillis())
 			val user = new User("1", "Jade", now, now)
 			dao.insert(user)
@@ -66,7 +67,7 @@ class SqliteDaoImplTest extends FunSuite with Logging {
 	}
 
 	test("Test-dao-impl-test-02-sql-inset-or-update") {
-		SqliteEnv.testInEnv(() => {
+		testEnv.testInEnv(() => {
 			val now = new Date(System.currentTimeMillis())
 			val user = new User("1", "Jade", now, now)
 			dao.insert(user)

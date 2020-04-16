@@ -23,10 +23,10 @@ extends JDBCTemplateDao[User, String](dataSource) with Logging {
 @RunWith(classOf[JUnitRunner])
 class MysqlDaoImplTest extends FunSuite with Logging {
 	val dao = new MysqlImplTestDao(MysqlDataSourceHolder)
+	val testEnv = MysqlEnv
 
 	test("Test-dao-impl-test-00-sql-inset-get") {
-		MysqlEnv.testInEnv(() => {
-			MysqlDataSourceHolder.connection().get.setAutoCommit(true)
+		testEnv.testInEnv(() => {
 			val now = new Date(System.currentTimeMillis())
 			val user = new User("1", "Jade", now, now)
 			dao.insert(user)
@@ -42,8 +42,7 @@ class MysqlDaoImplTest extends FunSuite with Logging {
 	}
 
 	test("Test-dao-impl-test-01-sql-inset-update") {
-		MysqlEnv.testInEnv(() => {
-			MysqlDataSourceHolder.connection().get.setAutoCommit(true)
+		testEnv.testInEnv(() => {
 			val now = new Date(System.currentTimeMillis())
 			val user = new User("1", "Jade", now, now)
 			dao.insert(user)
@@ -68,8 +67,7 @@ class MysqlDaoImplTest extends FunSuite with Logging {
 	}
 
 	test("Test-dao-impl-test-02-sql-inset-or-update") {
-		MysqlEnv.testInEnv(() => {
-			MysqlDataSourceHolder.connection().get.setAutoCommit(true)
+		testEnv.testInEnv(() => {
 			val now = new Date(System.currentTimeMillis())
 			val user = new User("1", "Jade", now, now)
 			dao.insert(user)

@@ -50,8 +50,7 @@ object SqliteEnv extends Logging {
 	}
 }
 
-//@Table(database = "db-test-01", table = "testuser")
-@Table(table = "testuser")
+@Table(database = "db-test-01", table = "testuser")
 class User(_id: String, _name: String, _createTime: Date, _lastChangeTime: Date) //
 	extends Record[String](_id, _createTime, _lastChangeTime) //
 {
