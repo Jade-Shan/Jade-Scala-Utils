@@ -227,13 +227,13 @@ abstract class BaseTransactionService extends Logging {
 		val transResult: Try[T] = currTransLayer match {
 			case Some(l: NewTransactionLayer) => callRes match {
 				case s: Success[T] => { // 新事务，成功后提交修改
-					logTrace("Call Func Success, start commit transaction manually: {}", transaction.name)
+					logTrace("New Trans: Call Func Success, start commit transaction manually: {}", transaction.name)
 					conn.commit()
 					logTrace("Call Func Success, commit transaction manually success: {}", transaction.name)
 					callRes
 				}
 				case Failure(f) => { // 新事务，失败后直接回滚。不让错误传播到外层
-					logTrace("Call Func Err, Trans rollback: S: {} for err: {}", f)
+					logTrace("New Trans: Call Func Err, Trans rollback: S: {} for err: {}", f)
 					if (null != l && l.savepoint.isRight) {
 						conn.rollback(l.savepoint.right.get)
 					} else conn.rollback()
@@ -242,32 +242,32 @@ abstract class BaseTransactionService extends Logging {
 			}
 			case Some(l: JoinLastTransaction) => callRes match {
 				case s: Success[T] => { // 外层事务，成功后不提交，等待外层事务完成一同提交
-					logTrace("Call Func Success, retrun outter transaction : S: {}", transaction)
+					logTrace("Join Trans: Call Func Success, retrun outter transaction : S: {}", transaction)
 					callRes
 				}
 				case Failure(f) => { // 外层事务，失败后不回滚，报错给外层事务一同回滚
-					logTrace("Call Func Err, need rollback outter transaction : S: {}", transaction)
+					logTrace("Join Trans: Call Func Err, need rollback outter transaction : S: {}", transaction)
 					callRes
 				}
 			}
 			case Some(_) => callRes match { // 不支持的事务，作为当作外层事务处理
 				case s: Success[T] => {
-					logTrace("Call Func Success, not in transaction: S: {}", transaction)
+					logTrace("Default Outter Trans: Call Func Success, not in transaction: S: {}", transaction)
 					callRes
 				}
 				case Failure(f) => {
-					logTrace("Call Func Err, need rollback outter transaction : S: {}", transaction)
+					logTrace("Default Outter Trans: Call Func Err, need rollback outter transaction : S: {}", transaction)
 					callRes
 				}
 			}
 			case None => callRes match {
 				case s: Success[T] => { // 没有事务，按自动提交操作
-					logTrace("Call Func Success, not in transaction: S: {}", transaction)
+					logTrace("None Trans: Call Func Success, not in transaction: S: {}", transaction)
 					if (conn.getAutoCommit) { conn.commit() }
 					callRes
 				}
 				case Failure(f) => {
-					logTrace("Call Func Err, not in transaction so no rollback: S: {}", transaction)
+					logTrace("None Trans: Call Func Err, not in transaction so no rollback: S: {}", transaction)
 					Success(generateDefaultResult(typeOf[T]).asInstanceOf[T])
 				}
 			}
