@@ -215,14 +215,20 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 	}
 	
 	def insert(model: T): Try[Int] = {
-		val table = ORMUtil.getTableName[T, K](entryClass, datasource.dialect).get
-		val seq = ORMUtil.obj2kv[T,K](entryClass, model, Set.empty[String])
-		val xx = seq.unzip
-		val colStr = { for (s <- xx._1) yield "`%s`".format(s) }.mkString(",")
-		val values = xx._2
-		val markStr = { for (s <- xx._1) yield "?" }.mkString(",")
-		val sql = s"INSERT INTO $table ($colStr) VALUES ($markStr)"
-		executeUpdate(sql, values)
+		if (null == model) {
+			Failure(new RuntimeException("Rec caonnot by null "))
+		} else if(null == model.id) {
+			Failure(new RuntimeException("PrimeKey id caonnot by null "))
+		} else {
+			val table = ORMUtil.getTableName[T, K](entryClass, datasource.dialect).get
+			val seq = ORMUtil.obj2kv[T, K](entryClass, model, Set.empty[String])
+			val xx = seq.unzip
+			val colStr = { for (s <- xx._1) yield "`%s`".format(s) }.mkString(",")
+			val values = xx._2
+			val markStr = { for (s <- xx._1) yield "?" }.mkString(",")
+			val sql = s"INSERT INTO $table ($colStr) VALUES ($markStr)"
+			executeUpdate(sql, values)
+		}
 	}
 
 	def update(model: T): Try[Int] = {

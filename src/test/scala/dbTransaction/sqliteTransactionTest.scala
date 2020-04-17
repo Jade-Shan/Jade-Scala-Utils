@@ -24,59 +24,116 @@ object UserSqliteService extends TestSqliteService {
 
 	private val dao = new SqliteImplTestDao(SqliteDataSourceHolder)
 
-	def getUser(id: String): Try[Option[User]] = withTransaction {
-		 dao.getById(id) 
-	}
+	/* 纯读取，不需要事务 */
+	def getUser(id: String): Try[Option[User]] = dao.getById(id) 
 
 	def insertUser(user: User) = withTransaction { dao.insert(user) }
 
 	def insertUserList(userlist: List[User]) = withTransaction {
 		val ll = for (u <- userlist) yield dao.insert(u)
+		logDebug("list insert result: {}", ll)
 		val el = ll.filter(_.isFailure).map(_.failed.get)
+		logDebug("error list is : {}", el)
 		val sl = ll.filter(_.isSuccess).map(_.get)
+		logDebug("success list is : {}", sl)
 		if (el.size > 0) Failure(el(0)) else Success(sl)
 	}
-	
+
+	def insertUserList2(userlist: List[User], user: User) =
+		withTransaction(TransNesting.TS_PG_REQUIRED) {
+			val ll = for (u <- userlist) yield dao.insert(u)
+			logDebug("list insert result: {}", ll)
+			val el = ll.filter(_.isFailure).map(_.failed.get)
+			logDebug("error list is : {}", el)
+			val sl = ll.filter(_.isSuccess).map(_.get)
+			logDebug("success list is : {}", sl)
+			if (el.size > 0) Failure(el(0)) else Success(sl)
+			withTransaction(TransNesting.TS_PG_REQUIRED){ dao.insert(user) }
+		}
+
+	def insertUserList3(userlist: List[User], user: User) =
+		withTransaction(TransNesting.TS_PG_REQUIRED) {
+			val ll = for (u <- userlist) yield dao.insert(u)
+			logDebug("list insert result: {}", ll)
+			val el = ll.filter(_.isFailure).map(_.failed.get)
+			logDebug("error list is : {}", el)
+			val sl = ll.filter(_.isSuccess).map(_.get)
+			logDebug("success list is : {}", sl)
+			if (el.size > 0) Failure(el(0)) else Success(sl)
+			withTransaction(TransNesting.TS_PG_NESTED){ dao.insert(user) }
+		}
 }
 
 @RunWith(classOf[JUnitRunner])
 class SqliteTransactionTest extends FunSuite with Logging {
+	val testEnv = SqliteEnv
+	val testService = UserSqliteService
 
-	test("Test-trans-00-trans-commit") {
-		SqliteEnv.testInEnv(() => {
+	test("Test-00-trans-trans-commit") {
+		testEnv.testInEnv(() => {
 			logInfo("------------------------test auto commit\n")
-//			val user = new User("1", "jade")
-//			UserSqliteService.insertUser(user)
-//			val result = UserSqliteService.getUser(user.id)
-//			assert(result.isDefined)
-//			logInfo("--------userid {} is {}", user.id, result.get)
-//			assert("jade" == UserSqliteService.getUser(user.id).get.name)
+			val user = new User("1", "jade")
+			testService.insertUser(user)
+			val result = testService.getUser(user.id)
+			assert(result.isSuccess)
+			assert(result.get.isDefined)
+			val user1 = result.get.get
+			logInfo("--------userid {} is {}", user1.id, user1)
+			assert("jade" == user1.name)
 		})
 	} 
 
-	test("Test-trans-01-rollback-by-exception") {
-		SqliteEnv.testInEnv(() => {
+	test("Test-01-trans-rollback-by-exception") {
+		testEnv.testInEnv(() => {
 			logInfo("------------------------test rollback by exception\n")
-//			UserSqliteService.insertUserList(new User("1", "jade") ::
-//					new User("2", "yun") :: new User("3", "wendy") ::
-//					new User("4", "wen") :: new User(null, "tiantian") :: Nil)
-//			UserSqliteService.insertUser(new User("1", "jade"))
-//			UserSqliteService.insertUser(new User("2", "yun"))
-//			UserSqliteService.insertUser(new User("3", "wendy"))
-//			UserSqliteService.insertUser(new User("4", "wen"))
-//			logInfo("--------userid {} is {}", "1", UserSqliteService.getUser("1").get)
-//			logInfo("--------userid {} is {}", "2", UserSqliteService.getUser("2").get)
-//			logInfo("--------userid {} is {}", "3", UserSqliteService.getUser("3").get)
-//			logInfo("--------userid {} is {}", "4", UserSqliteService.getUser("4").get)
-//			assert("jade"  == UserSqliteService.getUser("1").get.name)
-//			assert("yun"   == UserSqliteService.getUser("2").get.name)
-//			assert("wendy" == UserSqliteService.getUser("3").get.name)
-//			assert("wen"    == UserSqliteService.getUser("4").get.name)
-//			UserSqliteService.insertUser(new User(null, "tiantian"))
-//			assert(UserSqliteService.getUser("1").isEmpty)
-//			assert(UserSqliteService.getUser("2").isEmpty)
-//			assert(UserSqliteService.getUser("3").isEmpty)
-//			assert(UserSqliteService.getUser("4").isEmpty)
+			testService.insertUserList(new User("1", "jade") ::
+					new User("2", "yun") :: new User("3", "wendy") ::
+					new User("4", "wen") :: //
+					new User(null, "tiantian") // id is null should rollback
+			:: Nil)
+			assert(testService.getUser("1").get.isEmpty)
+			assert(testService.getUser("2").get.isEmpty)
+			assert(testService.getUser("3").get.isEmpty)
+			assert(testService.getUser("4").get.isEmpty)
+		})
+	}
+
+	test("Test-02-trans-pg-require-rollback-by-same-exception") {
+		testEnv.testInEnv(() => {
+			// 嵌套事务，内层回滚外层一起回滚
+			logInfo("------------------------test rollback by exception\n")
+			val userlist = new User("1", "jade") :: new User("2", "yun") :: //
+				new User("3", "wendy") :: new User("4", "wen") :: Nil
+			val user = new User(null, "tiantian")
+			testService.insertUserList2(userlist, user)
+			logDebug("user.id {} is {}", "1", testService.getUser("1"))
+			logDebug("user.id {} is {}", "2", testService.getUser("2"))
+			logDebug("user.id {} is {}", "3", testService.getUser("3"))
+			logDebug("user.id {} is {}", "4", testService.getUser("4"))
+			assert(testService.getUser("1").get.isEmpty)
+			assert(testService.getUser("2").get.isEmpty)
+			assert(testService.getUser("3").get.isEmpty)
+			assert(testService.getUser("4").get.isEmpty)
+		})
+	}
+
+	test("Test-03-trans-nested-rollback-by-exception") {
+		testEnv.testInEnv(() => {
+			// 嵌套事务，本应该内外一起回滚，但sqlite不支持Savepoing，
+			// 所以要回滚只能全部回滚
+			logInfo("------------------------test rollback by exception\n")
+			val userlist = new User("1", "jade") :: new User("2", "yun") :: //
+				new User("3", "wendy") :: new User("4", "wen") :: Nil
+			val user = new User(null, "tiantian")
+			testService.insertUserList3(userlist, user)
+			logDebug("user.id {} is {}", "1", testService.getUser("1"))
+			logDebug("user.id {} is {}", "2", testService.getUser("2"))
+			logDebug("user.id {} is {}", "3", testService.getUser("3"))
+			logDebug("user.id {} is {}", "4", testService.getUser("4"))
+//			assert(testService.getUser("1").get.isEmpty)
+//			assert(testService.getUser("2").get.isEmpty)
+//			assert(testService.getUser("3").get.isEmpty)
+//			assert(testService.getUser("4").get.isEmpty)
 		})
 	}
 

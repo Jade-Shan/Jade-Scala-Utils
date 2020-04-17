@@ -56,10 +56,10 @@ object TransNesting extends Enum[TransNesting] {
 
 abstract class TransactionLayer(
 	val autoCommit: Boolean,                        //
-	val savepoint: Either[Throwable, Savepoint]  //
+	val savepoint: Try[Savepoint]  //
 )
 
-class NewTransactionLayer(savepoint: Either[Throwable, Savepoint])
+class NewTransactionLayer(savepoint: Try[Savepoint])
 	extends TransactionLayer(false, savepoint)
 {
 	
@@ -73,7 +73,7 @@ class JoinLastTransaction extends TransactionLayer(false, null) {
 
 }
 
-class NoTransactionLayer(savepoint: Either[Throwable, Savepoint])
+class NoTransactionLayer(savepoint: Try[Savepoint])
 	extends TransactionLayer(true, savepoint) //
 {
 	def this() = this(null)
@@ -219,10 +219,15 @@ abstract class BaseTransactionService extends Logging {
 					callRes
 				}
 				case Failure(f) => { // 新事务，失败后直接回滚。不让错误传播到外层
-					logTrace("New Trans: Call Func Err, Trans rollback: S: {} for err: {}", f)
-					if (null != l && l.savepoint.isRight) {
-						conn.rollback(l.savepoint.right.get)
-					} else conn.rollback()
+					logTrace("New Trans: Call Func Err, Trans rollback S: {} for err: {}", transaction, f)
+					if (null != l && l.savepoint.isSuccess) {
+						val sp = l.savepoint.get
+						logTrace("JDBC Support savepoint, rollback since savepoint: {}", sp)
+						conn.rollback(sp)
+					} else {
+						logTrace("JDBC NOT support savepoint, rollback since last commit")
+						conn.rollback()
+					}
 					Success(generateDefaultResult(typeOf[T]).asInstanceOf[T])
 				}
 			}
@@ -268,11 +273,17 @@ abstract class BaseTransactionService extends Logging {
 
 	private[this] def dealwithTransNesting(nesting: TransNesting, iso: TransIso): Unit = {
 
-		def createSavepoint(): Either[Throwable, Savepoint] = Left(//
-				new RuntimeException("DB not Support Savepoint")) 
-//		try {
-//			Right(dataSource.setSavepoint("" + System.currentTimeMillis()))
-//		} catch { case e: Throwable => Left(e) }
+		def createSavepoint(): Try[Savepoint] = {
+//			try {
+//				val sp = dataSource.connection().get.setSavepoint( //
+//					"" + System.currentTimeMillis()
+//				)
+//				Success(sp)
+//			} catch {
+//				case e: Throwable =>
+					Failure(new RuntimeException("DB not Support Savepoint"))
+//			}
+		}
 
 		logTrace("warpping transaction layer: {}", nesting)
 		val currLayer:Try[TransactionLayer] = nesting match {
