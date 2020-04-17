@@ -22,7 +22,7 @@ class TestMysqlService extends BaseTransactionService {
 
 object UserMysqlService extends TestMysqlService {
 
-	private val dao = new MysqlImplTestDao(MysqlDataSourceHolder)
+	private val dao = new MysqlImplTestDao(dataSource)
 
 	/* 纯读取，不需要事务 */
 	def getUser(id: String): Try[Option[User]] = dao.getById(id) 

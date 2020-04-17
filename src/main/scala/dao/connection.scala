@@ -14,22 +14,40 @@ import java.sql.SQLException
 import scala.util.Failure
 
 import org.apache.commons.lang.StringUtils.{isBlank => isBlankStr}
+import java.sql.Savepoint
 
 /* 对应不同的数据库方言 */
 trait Dialect {
 	def sqlTableName(database: String, table: String): String
+
+	def createSavepoint(connection: Connection): Try[Savepoint]
 }
 
 class DialectDefault extends Dialect {
 	def sqlTableName(database: String, table: String) = {
 		if (isBlankStr(database)) s"`$table`" else s"`$database`.`$table`"
 	}
+
+	def createSavepoint(connection: Connection): Try[Savepoint] = 
+//	try {
+//		val sp = connection.setSavepoint( //
+//			"" + System.currentTimeMillis()
+//		)
+//		Success(sp)
+//	} catch {
+//		case e: Throwable =>
+			Failure(new RuntimeException("DB not Support Savepoint"))
+//	}
+
 }
 object DialectDefault { var dialect = new DialectDefault }
 
 
 class DialectSqlite extends DialectDefault {
-	override def sqlTableName(database: String, table: String) =  s"`$table`"
+	override def sqlTableName(database: String, table: String) = s"`$table`"
+	override def createSavepoint(connection: Connection): Try[Savepoint] = {
+			Failure(new RuntimeException("DB not Support Savepoint"))
+	}
 }
 object DialectSqlite { var dialect = new DialectSqlite }
 

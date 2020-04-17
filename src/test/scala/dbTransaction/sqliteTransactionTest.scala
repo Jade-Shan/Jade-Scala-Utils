@@ -22,7 +22,7 @@ class TestSqliteService extends BaseTransactionService {
 
 object UserSqliteService extends TestSqliteService {
 
-	private val dao = new SqliteImplTestDao(SqliteDataSourceHolder)
+	private val dao = new SqliteImplTestDao(dataSource)
 
 	/* 纯读取，不需要事务 */
 	def getUser(id: String): Try[Option[User]] = dao.getById(id) 

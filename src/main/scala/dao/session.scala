@@ -54,22 +54,30 @@ object TransNesting extends Enum[TransNesting] {
 	case object TS_PG_NESTED extends TransNesting(6, "PROPAGATION_NESTED")
 }
 
-abstract class TransactionLayer(
-	val autoCommit: Boolean,                        //
-	val savepoint: Try[Savepoint]  //
-)
+abstract class TransactionLayer(//
+		val autoCommit: Boolean, val savepoint: Try[Savepoint] //
+) {
+	val savepointInfo: String = if (savepoint.isFailure) {
+		savepoint.failed.get.toString()
+	} else {
+//		f"${savepoint.get.getSavepointId}:${savepoint.get.getSavepointName}"
+		f"${savepoint.get.getSavepointName}"
+	}
+}
 
 class NewTransactionLayer(savepoint: Try[Savepoint])
 	extends TransactionLayer(false, savepoint)
 {
 	
-	override def toString(): String = "new-trans,autoCommit=%s".format(autoCommit)
+//	val ss = savepoint.get.getSavepointName
+//	val ss = savepoint.get.getSavepointId
+	override def toString(): String = f"new-trans($autoCommit, $savepointInfo)"
 
 }
 
 class JoinLastTransaction extends TransactionLayer(false, null) {
 	
-	override def toString(): String = "join-trans,autoCommit=%s".format(autoCommit)
+	override def toString(): String = f"join-trans($autoCommit, $savepointInfo)"
 
 }
 
@@ -78,7 +86,7 @@ class NoTransactionLayer(savepoint: Try[Savepoint])
 {
 	def this() = this(null)
 	
-	override def toString(): String = "no-trans,autoCommit=%s".format(autoCommit)
+	override def toString(): String = f"no-trans($autoCommit, $savepointInfo)"
 }
 
 class TransactionStack(val tag: String) extends Logging {	
@@ -120,6 +128,8 @@ class DataSourcetHolder(val pool: DataSourcePool, val defaultIsolation: TransIso
 	private[this] val resource = new ThreadLocal[Connection]
 	
 	def dialect(): Dialect = pool.dialect
+	
+	def createSavepoint(): Try[Savepoint] = dialect().createSavepoint(connection().get)
 
 	def isBroken() = null == resource.get || resource.get.isClosed
 	
@@ -273,18 +283,6 @@ abstract class BaseTransactionService extends Logging {
 
 	private[this] def dealwithTransNesting(nesting: TransNesting, iso: TransIso): Unit = {
 
-		def createSavepoint(): Try[Savepoint] = {
-//			try {
-//				val sp = dataSource.connection().get.setSavepoint( //
-//					"" + System.currentTimeMillis()
-//				)
-//				Success(sp)
-//			} catch {
-//				case e: Throwable =>
-					Failure(new RuntimeException("DB not Support Savepoint"))
-//			}
-		}
-
 		logTrace("warpping transaction layer: {}", nesting)
 		val currLayer:Try[TransactionLayer] = nesting match {
 			case TS_PG_NEVER => if (transaction.isInTransaction) {
@@ -298,11 +296,11 @@ abstract class BaseTransactionService extends Logging {
 			case TS_PG_REQUIRED => if (transaction.isInTransaction) {
 				// PROPAGATION_REQUIRED -- 支持当前事务，如果当前没有事务，就新建一个事务。这是最常见的选择。
 				Success(new JoinLastTransaction)
-			} else Success(new NewTransactionLayer(createSavepoint))
+			} else Success(new NewTransactionLayer(dataSource.createSavepoint()))
 			case TS_PG_NESTED => {
 				// PROPAGATION_NESTED -- 如果当前存在事务，则在嵌套事务内执行。
 				// 如果当前没有事务，则进行与PROPAGATION_REQUIRED类似的操作。
-				Success(new NewTransactionLayer(createSavepoint))
+				Success(new NewTransactionLayer(dataSource.createSavepoint()))
 			}
 			case TS_PG_SUPPORTS => if (transaction.isInTransaction) {
 				// PROPAGATION_SUPPORTS -- 支持当前事务，如果当前没有事务，就以非事务方式执行。
@@ -310,7 +308,7 @@ abstract class BaseTransactionService extends Logging {
 			} else Success(new NoTransactionLayer)
 			case TS_PG_REQUIRES_NEW => {
 				// PROPAGATION_REQUIRES_NEW -- 新建事务，如果当前存在事务，把当前事务挂起。
-				Success(new NewTransactionLayer(createSavepoint))
+				Success(new NewTransactionLayer(dataSource.createSavepoint()))
 			}
 			case TS_PG_NOT_SUPPORTED => {
 				// PROPAGATION_NOT_SUPPORTED -- 以非事务方式执行操作，如果当前存在事务，就把当前事务挂起。

@@ -260,6 +260,7 @@ abstract class JDBCTemplateDao[T <: Record[K], K](datasource: DataSourcetHolder)
 			// close jdbc connection if transaction is over
 			datasource.retrunBack()
 		}
+		ps.close()
 		result
 	}
 
@@ -271,6 +272,7 @@ object ORMUtil {
 	def allRow2map(showCols: Set[String], rs: ResultSet): Seq[Map[String, AnyRef]] = {
 		var lst: List[Map[String, AnyRef]] = Nil
 		while (rs.next()) { lst = row2map(showCols, rs) :: lst }
+		rs.close()
 		lst.reverse
 	}
 
