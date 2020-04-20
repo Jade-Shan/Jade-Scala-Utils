@@ -196,7 +196,7 @@ class MySqlDaoTest extends FunSuite with Logging {
 	test("Test-trans-00-auto-commit") {
 		MysqlEnv.testInEnv(() => {
 			logDebug("------------------------test auto commit\n")
-			val dao = new SqliteTestPoolDao(MysqlDataSourceHolder)
+			val dao = new MysqlTestPoolDao(MysqlDataSourceHolder)
 			val user = new User("1", "jade")
 			MysqlDataSourceHolder.connection().get.setAutoCommit(true)
 			dao.insert(user)
@@ -209,7 +209,7 @@ class MySqlDaoTest extends FunSuite with Logging {
 	test("Test-trans-01-manual-commit") {
 		MysqlEnv.testInEnv(() => {
 			logDebug("------------------------test manual commit\n")
-			val dao = new SqliteTestPoolDao(MysqlDataSourceHolder)
+			val dao = new MysqlTestPoolDao(MysqlDataSourceHolder)
 			val user = new User("1", "jade")
 			MysqlDataSourceHolder.connection().get.setAutoCommit(false)
 			val savepoint = MysqlDataSourceHolder.connection().get.setSavepoint("" + System.currentTimeMillis())
@@ -224,7 +224,7 @@ class MySqlDaoTest extends FunSuite with Logging {
 	test("Test-trans-02-rollback-manual") {
 		MysqlEnv.testInEnv(() => {
 			logDebug("------------------------test rollback manual\n")
-			val dao = new SqliteTestPoolDao(MysqlDataSourceHolder)
+			val dao = new MysqlTestPoolDao(MysqlDataSourceHolder)
 			MysqlDataSourceHolder.connection().get.setAutoCommit(false)
 			dao.insert(new User("1", "jade"))
 			dao.insert(new User("2", "yun"))
@@ -252,7 +252,7 @@ class MySqlDaoTest extends FunSuite with Logging {
 	test("Test-trans-02-rollback-manual-savepoint") {
 		MysqlEnv.testInEnv(() => {
 			logInfo("------------------------test create database\n")
-			val dao = new SqliteTestPoolDao(MysqlDataSourceHolder)
+			val dao = new MysqlTestPoolDao(MysqlDataSourceHolder)
 			MysqlDataSourceHolder.connection().get.setAutoCommit(false)
 			dao.insert(new User("1", "jade"))
 			dao.insert(new User("2", "yun"))
@@ -279,7 +279,7 @@ class MySqlDaoTest extends FunSuite with Logging {
 	test("Test-trans-03-rollback-by-exception") {
 		MysqlEnv.testInEnv(() => {
 			logInfo("------------------------test rollback by exception\n")
-			val dao = new SqliteTestPoolDao(MysqlDataSourceHolder)
+			val dao = new MysqlTestPoolDao(MysqlDataSourceHolder)
 			MysqlDataSourceHolder.connection().get.setAutoCommit(false)
 			dao.insert(new User("1", "jade"))
 			dao.insert(new User("2", "yun"))

@@ -300,7 +300,8 @@ abstract class BaseTransactionService extends Logging {
 			case TS_PG_NESTED => {
 				// PROPAGATION_NESTED -- 如果当前存在事务，则在嵌套事务内执行。
 				// 如果当前没有事务，则进行与PROPAGATION_REQUIRED类似的操作。
-				Success(new NewTransactionLayer(dataSource.createSavepoint()))
+				// Success(new NewTransactionLayer(dataSource.createSavepoint()))
+				Failure(new RuntimeException("UnSupport Transaction Type")) // 暂时不支持
 			}
 			case TS_PG_SUPPORTS => if (transaction.isInTransaction) {
 				// PROPAGATION_SUPPORTS -- 支持当前事务，如果当前没有事务，就以非事务方式执行。
@@ -308,7 +309,8 @@ abstract class BaseTransactionService extends Logging {
 			} else Success(new NoTransactionLayer)
 			case TS_PG_REQUIRES_NEW => {
 				// PROPAGATION_REQUIRES_NEW -- 新建事务，如果当前存在事务，把当前事务挂起。
-				Success(new NewTransactionLayer(dataSource.createSavepoint()))
+				// Success(new NewTransactionLayer(dataSource.createSavepoint()))
+				Failure(new RuntimeException("UnSupport Transaction Type")) // 暂时不支持
 			}
 			case TS_PG_NOT_SUPPORTED => {
 				// PROPAGATION_NOT_SUPPORTED -- 以非事务方式执行操作，如果当前存在事务，就把当前事务挂起。

@@ -15,8 +15,10 @@ Change Log
 ================
 
 
-1.0.5-SNAPSHOT
+2.0.0
 ----------------
+
+* :arrow_up: jadelibs-scala update version v2.0.3
 
 
 1.0.4
