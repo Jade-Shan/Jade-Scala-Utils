@@ -1,4 +1,4 @@
-package servlet
+package net.jadedungeon.scalautil.net.http
 
 import java.io.PrintWriter
 import javax.servlet.http.HttpServletRequest

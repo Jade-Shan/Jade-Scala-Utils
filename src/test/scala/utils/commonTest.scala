@@ -1,4 +1,4 @@
-package jadeutils.common
+package net.jadedungeon.scalautil.common
 
 import org.slf4j.LoggerFactory
 import org.slf4j.Logger
@@ -125,54 +125,54 @@ class CommonTest extends FunSuite {
 
 }
 
+//@RunWith(classOf[JUnitRunner])
+//class JsonTest extends FunSuite {
+//
+//}
+//
+//object JsonTest { 
+//	lazy val logger = LoggerFactory.getLogger(this.getClass)
+//
+//	def getLoggerByName(name: String) = LoggerFactory.getLogger(name)
+//}
+
 @RunWith(classOf[JUnitRunner])
-class JsonTest extends FunSuite {
+class UtilsTest extends FunSuite with Logging {
+
+//	test("test-run-js") {
+//		import scala.io.Source
+//		val scripts = Source.fromFile("test.js").mkString
+//		logger.info(scripts)
+//		val result = JavascriptUtils.evaluateString(scripts + "; d[0];")
+//		logger.info(result._2)
+//	}
+//
+//	test("test-run-js2") {
+//		import scala.io.Source
+//		val scripts = Source.fromFile("test2.js").mkString
+//		logger.info(scripts)
+//		val result = JavascriptUtils.evaluateString(scripts + "; d[0];")
+//		logger.info(result._2)
+//	}
+
+//	test("test-format-js") {
+//		val res = HttpBeautifyUtils.formatJs("""if (a >0) { "<a href=\"http://www.google.com\">google</a>" } else { "<input type=\"text\" />" }""")
+//		assert(
+//			"""|if (a > 0) {
+//				|    "<a href=\"http://www.google.com\">google</a>"
+//				|} else {
+//				|    "<input type=\"text\" />"
+//				|}""".stripMargin == res)
+//	}
 
 }
 
-object JsonTest { 
-	lazy val logger = LoggerFactory.getLogger(this.getClass)
-
-	def getLoggerByName(name: String) = LoggerFactory.getLogger(name)
-}
-
-@RunWith(classOf[JUnitRunner])
-class UtilsTest extends FunSuite {
-	lazy val logger = UtilsTest.logger
-
-	test("test-run-js") {
-		import scala.io.Source
-		val scripts = Source.fromFile("test.js").mkString
-		logger.info(scripts)
-		val result = JavascriptUtils.evaluateString(scripts + "; d[0];")
-		logger.info(result._2)
-	}
-
-	test("test-run-js2") {
-		import scala.io.Source
-		val scripts = Source.fromFile("test2.js").mkString
-		logger.info(scripts)
-		val result = JavascriptUtils.evaluateString(scripts + "; d[0];")
-		logger.info(result._2)
-	}
-
-	test("test-format-js") {
-		val res = HttpBeautifyUtils.formatJs("""if (a >0) { "<a href=\"http://www.google.com\">google</a>" } else { "<input type=\"text\" />" }""")
-		assert(
-			"""|if (a > 0) {
-				|    "<a href=\"http://www.google.com\">google</a>"
-				|} else {
-				|    "<input type=\"text\" />"
-				|}""".stripMargin == res)
-	}
-
-}
-
-object UtilsTest { 
-	lazy val logger = LoggerFactory.getLogger(this.getClass)
-
-	def getLoggerByName(name: String) = LoggerFactory.getLogger(name)
-}
+//
+//object UtilsTest { 
+//	lazy val logger = LoggerFactory.getLogger(this.getClass)
+//
+//	def getLoggerByName(name: String) = LoggerFactory.getLogger(name)
+//}
 
 /* 
 @RunWith(classOf[JUnitRunner])

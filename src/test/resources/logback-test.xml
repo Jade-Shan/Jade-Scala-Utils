@@ -7,45 +7,108 @@
 
 	<!--定义日志文件的存储地址 勿在 LogBack 的配置中使用相对路径--> 
 	<property name="LOG_HOME" value="." />
-	<property name="LOGFILE" value="jade-scala-utils.%d{yyyy-MM-dd}.log" />
+	<property name="LOGFILE"  value="jade-scala-utils.%d{yyyy-MM-dd}.log" />
 
-	<property name="LOGENV" value="fat" />
+	<property name="LOGENV"   value="fat" />
 
-	<!-- 日志最大的历史 30天 --> 
-  <property name="MAX_HISTORY" value="30"/>  
-  <property name="MAX_SIZE" value="5MB"/>  
+	<!-- 日志最大的历史 30天 -->
+	<property name="MAX_HISTORY"   value="30" />
+	<property name="MAX_SIZE"      value="5MB" />
+	
+	<!-- 日志输出的格式 -->	
 	<property name="LOG_PTN_INFO"  value="%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36}.%method:%line - %msg%n" />
-	<property name="LOG_PTN_TRACE" value="%msg%n" />
+	<property name="LOG_PTN_DEBUG" value="%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36}.%method:%line - %msg%n" />
+	<property name="LOG_PTN_TRACE" value="%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36}.%method:%line - %msg%n" />
 
 	<!-- ==================================================================== -->
-	<!-- 日志输出                                                             -->
+	<!-- appender 代表日志输出的目标，可以是控制台也可以是文件                          -->
 	<!-- ==================================================================== -->
 
+	<!-- 输出TRACE级别的日志到控制台 -->
 	<appender name="APD-TRACE-CSL" class="ch.qos.logback.core.ConsoleAppender">
+	<!-- <filter class="ch.qos.logback.classic.filter.LevelFilter"> -->
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
-			<!--只记录TRACE级别的 
-			<level>TRACE</level><onMatch>ACCEPT</onMatch><onMismatch>DENY</onMismatch>
-				 -->
+		<!-- 
+		 -->
 			<level>ERROR</level><onMatch>DENY</onMatch>
 			<level>WARN</level><onMatch>DENY</onMatch>
 			<level>INFO</level><onMatch>DENY</onMatch>
+			<level>DEBUG</level><onMatch>DENY</onMatch>
+			<level>TRACE</level><onMatch>ACCEPT</onMatch><onMismatch>DENY</onMismatch>
 		</filter>
 		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
 			<pattern>${LOGENV} - ${LOG_PTN_TRACE}</pattern>
 		</encoder>
 	</appender>
 
+	<!-- 输出TRACE级别的日志到文件 -->
+	<appender name="APD-TRACE-FILE" class="ch.qos.logback.core.rolling.RollingFileAppender"> 
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<FileNamePattern>${LOG_HOME}/${LOGFILE}</FileNamePattern> 
+			<MaxHistory>${MAX_HISTORY}</MaxHistory>
+		</rollingPolicy> 
+		<triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+			<MaxFileSize>${MAX_SIZE}</MaxFileSize>
+		</triggeringPolicy>
+		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>TRACE</level><onMatch>ACCEPT</onMatch><onMismatch>DENY</onMismatch>
+		<!-- 
+		 -->
+			<level>ERROR</level><onMatch>DENY</onMatch>
+			<level>WARN</level><onMatch>DENY</onMatch>
+			<level>INFO</level><onMatch>DENY</onMatch>
+			<level>DEBUG</level><onMatch>DENY</onMatch>
+		</filter>
+		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder"> 
+			<pattern>${LOGENV} - ${LOG_PTN_TRACE}</pattern>
+		</encoder> 
+	</appender> 
+
+	<!-- 输出DEBUG级别的日志到控制台 -->
 	<appender name="APD-DEBUG-CSL" class="ch.qos.logback.core.ConsoleAppender">
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>DEBUG</level><onMatch>ACCEPT</onMatch><onMismatch>DENY</onMismatch>
+		<!-- 
+		 -->
+			<level>ERROR</level><onMatch>DENY</onMatch>
+			<level>WARN</level><onMatch>DENY</onMatch>
+			<level>INFO</level><onMatch>DENY</onMatch>
 			<level>TRACE</level><onMatch>DENY</onMatch>
 		</filter>
 		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>${LOGENV} - ${LOG_PTN_INFO}</pattern>
+			<pattern>${LOGENV} - ${LOG_PTN_DEBUG}</pattern>
 		</encoder>
 	</appender>
 
+	<!-- 输出DEBUG级别的日志到文件 -->
+	<appender name="APD-DEBUG-FILE" class="ch.qos.logback.core.rolling.RollingFileAppender"> 
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<FileNamePattern>${LOG_HOME}/${LOGFILE}</FileNamePattern> 
+			<MaxHistory>${MAX_HISTORY}</MaxHistory>
+		</rollingPolicy> 
+		<triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+			<MaxFileSize>${MAX_SIZE}</MaxFileSize>
+		</triggeringPolicy>
+		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>DEBUG</level><onMatch>ACCEPT</onMatch><onMismatch>DENY</onMismatch>
+		<!-- 
+		 -->
+			<level>ERROR</level><onMatch>DENY</onMatch>
+			<level>WARN</level><onMatch>DENY</onMatch>
+			<level>INFO</level><onMatch>DENY</onMatch>
+			<level>TRACE</level><onMatch>DENY</onMatch>
+		</filter>
+		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder"> 
+			<pattern>${LOGENV} - ${LOG_PTN_DEBUG}</pattern>
+		</encoder> 
+	</appender> 
+
+	<!-- 输出INFO以上级别的日志到控制台 -->
 	<appender name="APD-INFO-CSL" class="ch.qos.logback.core.ConsoleAppender">
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>ERROR</level><onMatch>ACCEPT</onMatch>
+			<level>WARN</level><onMatch>ACCEPT</onMatch>
+			<level>INFO</level><onMatch>ACCEPT</onMatch>
 			<level>DEBUG</level><onMatch>DENY</onMatch>
 			<level>TRACE</level><onMatch>DENY</onMatch>
 		</filter>
@@ -54,6 +117,7 @@
 		</encoder>
 	</appender>
 
+	<!-- 输出INFO以上级别的日志到文件 -->
 	<appender name="APD-INFO-FILE" class="ch.qos.logback.core.rolling.RollingFileAppender"> 
 		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
 			<!--日志文件输出的文件名-->
@@ -64,29 +128,14 @@
 			<MaxFileSize>${MAX_SIZE}</MaxFileSize> <!-- 文件大小 -->
 		</triggeringPolicy>
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>ERROR</level><onMatch>ACCEPT</onMatch>
+			<level>WARN</level><onMatch>ACCEPT</onMatch>
+			<level>INFO</level><onMatch>ACCEPT</onMatch>
 			<level>TRACE</level><onMatch>DENY</onMatch>
 			<level>DEBUG</level><onMatch>DENY</onMatch>
 		</filter>
 		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder"> 
 			<pattern>${LOGENV} - ${LOG_PTN_INFO}</pattern>
-		</encoder> 
-	</appender> 
-
-	<appender name="APD-TRACE-FILE" class="ch.qos.logback.core.rolling.RollingFileAppender"> 
-		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-			<FileNamePattern>${LOG_HOME}/${LOGFILE}</FileNamePattern> 
-			<MaxHistory>${MAX_HISTORY}</MaxHistory>
-		</rollingPolicy> 
-		<triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-			<MaxFileSize>${MAX_SIZE}</MaxFileSize>
-		</triggeringPolicy>
-		<filter class="ch.qos.logback.classic.filter.LevelFilter">
-			<level>ERROR</level><onMatch>DENY</onMatch>
-			<level>WARN</level><onMatch>DENY</onMatch>
-			<level>INFO</level><onMatch>DENY</onMatch>
-		</filter>
-		<encoder charset="UTF-8" class="ch.qos.logback.classic.encoder.PatternLayoutEncoder"> 
-			<pattern>${LOGENV} - ${LOG_PTN_TRACE}</pattern>
 		</encoder> 
 	</appender> 
 
@@ -109,23 +158,23 @@
 
 	<!-- 默认的全局日志级别 -->
 	<root level="DEBUG">
+		<appender-ref ref="APD-INFO-CSL" />
 		<appender-ref ref="APD-DEBUG-CSL" />
 		<appender-ref ref="APD-INFO-FILE" />
+		<appender-ref ref="APD-DEBUG-FILE" />
 	</root>
 
 	<!-- jadeutils.comm.dao 包的日志级别 -->
-	<logger level="TRACE" name="jadeutils.comm.dao.SessionTest" > 
+	<logger level="TRACE" name="jadeutils.comm.dao" > 
 		<appender-ref ref="APD-TRACE-CSL" />
 		<appender-ref ref="APD-TRACE-FILE" />
 	</logger>
-
-	<!-- jadeutils.comm.dao 包的日志级别 -->
-	<logger level="DEBUG" name="jadeutils.comm.dao.SqliteDaoTest" > 
-		<!-- 
+	
+	<logger level="TRACE" name="com.zaxxer.hikari" > 
 		<appender-ref ref="APD-TRACE-CSL" />
 		<appender-ref ref="APD-TRACE-FILE" />
-				 -->
 	</logger>
+	
 
 	<!-- show parameters for hibernate sql 专为 Hibernate 定制 --> 
 	<!--

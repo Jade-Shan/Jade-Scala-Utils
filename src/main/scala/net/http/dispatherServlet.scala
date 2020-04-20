@@ -1,18 +1,17 @@
-package jadeutils.web
+package net.jadedungeon.scalautil.net.http
 
 import java.io.IOException
-import java.io.PrintWriter
 import javax.servlet.http.HttpServlet
 import javax.servlet.http.HttpServletResponse
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.ServletException
-
 import org.json4s.JValue
 import org.json4s.jackson.JsonMethods.compact
 import org.json4s.jackson.JsonMethods.render
-
-import jadeutils.common.Logging
-import jadeutils.common.StrUtils
+import net.jadedungeon.scalautil.common.Logging
+import net.jadedungeon.scalautil.common.StrUtils
+import java.io.IOException
+import javax.servlet.ServletException
 
 /**
  * Abstrict of HTTP method.
@@ -42,7 +41,7 @@ object Method extends Enumeration {
 /**
  * Define the pattern of http request
  *
- * @see jadeutils.web.Method
+ * @see net.jadedungeon.scalautil.net.http.Method
  *
  * @param method Define special HTTP request method to match.
  * @param pattern Define special pattern of the HTTP request URL to match
@@ -52,7 +51,7 @@ class RequestPattern(method: Method.Method, pattern: String) extends Logging {
 	/**
 	 * Define the pattern of http request. Match all kind of HTTP request method.
 	 *
-	 * @see jadeutils.web.Method
+	 * @see net.jadedungeon.scalautil.net.http.Method
 	 *
 	 * @param pattern Define special pattern of the HTTP request URL to match
 	 */
@@ -315,7 +314,7 @@ trait BasicController {
 	/**
 	 * This function regist a special HTTP request Pattern to the dispather.
 	 *
-	 * @see jadeutils.web.Method
+	 * @see net.jadedungeon.scalautil.net.http.Method
 	 *
 	 * @param method Define special HTTP request Method
 	 * @param pattern Define special pattern of the HTTP request URL
@@ -330,7 +329,7 @@ trait BasicController {
 	 * <p>This function regist a special HTTP request Pattern to the dispather.</p>
 	 * <p>This function can match any HTTP request method</p>
 	 *
-	 * @see jadeutils.web.Method
+	 * @see net.jadedungeon.scalautil.net.http.Method
 	 *
 	 * @param pattern Define special pattern of the HTTP request URL
 	 * @param logic Define what to do when the method and pattern are matched

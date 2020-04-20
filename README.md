@@ -9,9 +9,16 @@ TODO
 ================
 
 * dao module need transaction nest logic
+* Update MySQL JDBC Driver version `8.0.19`
 
 Change Log
 ================
+
+
+2.0.0
+----------------
+
+* :arrow_up: jadelibs-scala update version v2.0.3
 
 
 1.0.4

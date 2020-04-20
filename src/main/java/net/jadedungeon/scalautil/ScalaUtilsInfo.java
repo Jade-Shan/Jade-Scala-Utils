@@ -1,4 +1,4 @@
-package jadeutils.scala;
+package net.jadedungeon.scalautil;
 /**
  * <p>
  * Scala utils infomation 
