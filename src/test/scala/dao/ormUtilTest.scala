@@ -1,16 +1,16 @@
-package jadeutils.comm.dao
+package net.jadedungeon.scalautil.dao
 
 import org.scalatest.junit.JUnitRunner
 
 import org.scalatest.FunSuite
 import org.junit.runner.RunWith
 
-import jadeutils.common.Logging
+import net.jadedungeon.scalautil.common.Logging
 
 import java.sql.SQLException
 import java.util.Date
 
-import jadeutils.comm.dao.DialectSqlite.{dialect => SqliteDialect}
+import net.jadedungeon.scalautil.dao.DialectSqlite.{dialect => SqliteDialect}
 
 @RunWith(classOf[JUnitRunner])
 class ORMUtilTest extends FunSuite with Logging {

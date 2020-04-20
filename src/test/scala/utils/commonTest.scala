@@ -1,4 +1,4 @@
-package jadeutils.common
+package net.jadedungeon.scalautil.common
 
 import org.slf4j.LoggerFactory
 import org.slf4j.Logger
@@ -155,15 +155,15 @@ class UtilsTest extends FunSuite with Logging {
 //		logger.info(result._2)
 //	}
 
-	test("test-format-js") {
-		val res = HttpBeautifyUtils.formatJs("""if (a >0) { "<a href=\"http://www.google.com\">google</a>" } else { "<input type=\"text\" />" }""")
-		assert(
-			"""|if (a > 0) {
-				|    "<a href=\"http://www.google.com\">google</a>"
-				|} else {
-				|    "<input type=\"text\" />"
-				|}""".stripMargin == res)
-	}
+//	test("test-format-js") {
+//		val res = HttpBeautifyUtils.formatJs("""if (a >0) { "<a href=\"http://www.google.com\">google</a>" } else { "<input type=\"text\" />" }""")
+//		assert(
+//			"""|if (a > 0) {
+//				|    "<a href=\"http://www.google.com\">google</a>"
+//				|} else {
+//				|    "<input type=\"text\" />"
+//				|}""".stripMargin == res)
+//	}
 
 }
 

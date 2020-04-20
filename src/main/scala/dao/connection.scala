@@ -1,4 +1,4 @@
-package jadeutils.comm.dao
+package net.jadedungeon.scalautil.dao
 
 import java.util.Properties
 
@@ -6,7 +6,7 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.util.DriverDataSource;
 
-import jadeutils.common.Logging
+import net.jadedungeon.scalautil.common.Logging
 import java.sql.Connection
 import scala.util.Try
 import scala.util.Success

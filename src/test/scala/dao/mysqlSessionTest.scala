@@ -1,10 +1,10 @@
-package jadeutils.comm.dao
+package net.jadedungeon.scalautil.dao
 
 import java.sql.DriverManager
 import java.sql.Connection
 
-import jadeutils.common.Logging
-import jadeutils.common.EnvPropsComponent
+import net.jadedungeon.scalautil.common.Logging
+import net.jadedungeon.scalautil.common.EnvPropsComponent
 
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
@@ -14,7 +14,7 @@ import scala.util.Try
 import scala.util.Success
 import scala.util.Failure
 
-import jadeutils.comm.dao.DialectMySQL.{dialect => MySQLDialect}
+import net.jadedungeon.scalautil.dao.DialectMySQL.{dialect => MySQLDialect}
 
 object MysqlEnv extends Logging {
 	val dbName = "db-test-01"

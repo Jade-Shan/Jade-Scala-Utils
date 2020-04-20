@@ -1,11 +1,11 @@
-package jadeutils.comm.dao
+package net.jadedungeon.scalautil.dao
 
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
 import org.junit.runner.RunWith
 
-import jadeutils.common.Logging
-import jadeutils.common.EnvPropsComponent
+import net.jadedungeon.scalautil.common.Logging
+import net.jadedungeon.scalautil.common.EnvPropsComponent
 
 import java.sql.DriverManager
 import java.sql.Connection
@@ -15,7 +15,7 @@ import scala.util.Failure
 import scala.util.Success
 import java.util.Date
 
-import jadeutils.comm.dao.DialectSqlite.{dialect => SqliteDialect}
+import net.jadedungeon.scalautil.dao.DialectSqlite.{dialect => SqliteDialect}
 
 object SqliteEnv extends Logging {
 	val dbName = "db-test-01"

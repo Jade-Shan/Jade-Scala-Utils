@@ -1,4 +1,4 @@
-package jadeutils.comm.dao;
+package net.jadedungeon.scalautil.dao;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

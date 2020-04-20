@@ -1,4 +1,4 @@
-package jadeutils.comm.dao
+package net.jadedungeon.scalautil.dao
 
 import java.lang.Class
 import java.sql.Connection
@@ -17,7 +17,7 @@ import java.sql.PreparedStatement
 import scala.math.BigDecimal
 import java.util.Date
 import java.util.logging.Logger
-import jadeutils.common.Logging
+import net.jadedungeon.scalautil.common.Logging
 
 import scala.annotation.StaticAnnotation
 import scala.reflect.runtime.universe._

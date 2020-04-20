@@ -1,6 +1,6 @@
-package jadeutils.comm.dao
+package net.jadedungeon.scalautil.dao
 
-import jadeutils.common.Logging
+import net.jadedungeon.scalautil.common.Logging
 
 import java.sql.DriverManager
 import java.sql.Connection
@@ -11,7 +11,7 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
 import org.junit.runner.RunWith
 
-import jadeutils.comm.dao.DialectSqlite.{dialect => SqliteDialect}
+import net.jadedungeon.scalautil.dao.DialectSqlite.{dialect => SqliteDialect}
 
 @RunWith(classOf[JUnitRunner])
 class BaseConnectionPoolTest extends FunSuite with Logging {

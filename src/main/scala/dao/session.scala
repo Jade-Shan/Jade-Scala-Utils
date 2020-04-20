@@ -1,11 +1,11 @@
-package jadeutils.comm.dao
+package net.jadedungeon.scalautil.dao
 
 import java.lang.RuntimeException
 
 import java.sql.Connection
 import java.sql.Savepoint
 
-import jadeutils.common.Logging
+import net.jadedungeon.scalautil.common.Logging
 
 import enumeratum.EnumEntry
 import enumeratum.Enum
@@ -162,8 +162,8 @@ abstract class BaseTransactionService extends Logging {
 	import scala.reflect.runtime.universe.Type
 	import scala.reflect.runtime.universe.typeOf
 	import scala.reflect.runtime.universe.TypeTag
-	import jadeutils.comm.dao.TransNesting._
-	import jadeutils.comm.dao.TransIso._
+	import net.jadedungeon.scalautil.dao.TransNesting._
+	import net.jadedungeon.scalautil.dao.TransIso._
 
 	protected val dataSource: DataSourcetHolder
 	

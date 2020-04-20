@@ -1,4 +1,4 @@
-package jadeutils.common
+package net.jadedungeon.scalautil.common
 
 import java.util.Random
 
